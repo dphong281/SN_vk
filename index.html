@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Animated Eye-Catching Galaxy - Three.js</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000011; }
         canvas { display: block; }
@@ -39,7 +38,40 @@
         const controls = new OrbitControls(camera, canvas);
         controls.enableDamping = true;
 
-        // TỐI ƯU: Giảm xuống 200k hạt là đã quá đủ dày đặc và đẹp, cứu GPU khỏi overdraw
+        // --- CÀI ĐẶT ÂM THANH ĐƯỜNG DẪN TỪ REPO ---
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+
+        const sound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        
+        // Vì file nằm cùng repo nên chỉ cần gọi tên file như thế này là chuẩn
+        const musicUrl = 'my-song.mp3'; 
+
+        audioLoader.load(musicUrl, function(buffer) {
+            sound.setBuffer(buffer);
+            sound.setLoop(true); 
+            sound.setVolume(0.5); 
+        }, undefined, function(err) {
+            console.error('Không tải được file nhạc từ repo. Hãy check lại tên file viết hoa/thường nhé!', err);
+        });
+
+        // Kích hoạt khi click/chạm màn hình
+        const startAudio = () => {
+            // Kiểm tra xem AudioContext có bị đưa vào trạng thái treo (suspended) bởi trình duyệt không
+            if (listener.context.state === 'suspended') {
+                listener.context.resume();
+            }
+            if (sound && !sound.isPlaying && sound.buffer) {
+                sound.play();
+                window.removeEventListener('click', startAudio);
+                window.removeEventListener('touchstart', startAudio);
+            }
+        };
+        window.addEventListener('click', startAudio);
+        window.addEventListener('touchstart', startAudio);
+        // ----------------------------------------
+
         const parameters = {
             count: 200000, 
             size: 0.009,
@@ -48,8 +80,8 @@
             spin: -5,
             randomness: 0.304,
             randomnessPower: 3.031,
-            insideColor: '#ff6030',
-            outsideColor: '#1b3984',
+            insideColor: '#ff66cc', 
+            outsideColor: '#4b0082', 
             pulseSpeed: 0.5,
             pulseAmount: 0.6
         };
@@ -89,7 +121,6 @@
                 positions[i3 + 1] = randomY;
                 positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
 
-                // TỐI ƯU: Tính toán lerp màu bằng công thức thuần túy, KHÔNG dùng .clone()
                 const ratio = radius / parameters.radius;
                 colors[i3]     = insideColor.r + (outsideColor.r - insideColor.r) * ratio;
                 colors[i3 + 1] = insideColor.g + (outsideColor.g - insideColor.g) * ratio;
