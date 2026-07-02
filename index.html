@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Animated Eye-Catching Galaxy - Three.js</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000011; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas class="webgl"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.168.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.168.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000011);
+
+        const canvas = document.querySelector('canvas.webgl');
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(3, -2.5, 3);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Controls
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.autoRotate = false;
+
+        // Parameters
+        const parameters = {
+            count: 500000,
+            size: 0.009,
+            radius: 6.24,
+            branches: 15,
+            spin: -5,
+            randomness: 0.304,
+            randomnessPower: 3.031,
+            insideColor: '#ff6030',
+            outsideColor: '#1b3984',
+            pulseSpeed: 0.5,
+            pulseAmount: 0.6
+        };
+
+        let geometry = null;
+        let material = null;
+        let points = null;
+
+        const generateGalaxy = () => {
+            if (points !== null) {
+                geometry.dispose();
+                material.dispose();
+                scene.remove(points);
+            }
+
+            geometry = new THREE.BufferGeometry();
+
+            const positions = new Float32Array(parameters.count * 3);
+            const colors    = new Float32Array(parameters.count * 3);
+            const sizes     = new Float32Array(parameters.count); // individual particle variation
+
+            const insideColor  = new THREE.Color(parameters.insideColor);
+            const outsideColor = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                const i3 = i * 3;
+
+                const radius = Math.random() * parameters.radius;
+                const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2 +
+                                    radius * parameters.spin * 0.1; // Slight spiral
+
+                const randomX = Math.pow(Math.random(), parameters.randomnessPower) *
+                                (Math.random() < 0.5 ? 1 : -1) *
+                                parameters.randomness * radius;
+                const randomY = Math.pow(Math.random(), parameters.randomnessPower) *
+                                (Math.random() < 0.5 ? 1 : -1) *
+                                parameters.randomness * radius;
+                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) *
+                                (Math.random() < 0.5 ? 1 : -1) *
+                                parameters.randomness * radius;
+
+                positions[i3]     = Math.cos(branchAngle) * radius + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
+
+                // Color gradient from inside to outside
+                const mixedColor = insideColor.clone();
+                mixedColor.lerp(outsideColor, radius / parameters.radius);
+
+                colors[i3]     = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+
+                // Slight variation in base size for sparkle
+                sizes[i] = parameters.size * (0.8 + Math.random() * 0.4);
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1)); // Custom size per particle
+
+            // Shader material for pulsing and individual sizes
+            material = new THREE.ShaderMaterial({
+                vertexShader: `
+                    attribute float aSize;
+                    uniform float uTime;
+                    uniform float uPulseAmount;
+                    uniform float uPulseSpeed;
+                    varying vec3 vColor;
+
+                    void main() {
+                        vec4 modelPosition    = modelMatrix * vec4(position, 1.0);
+                        vec4 viewPosition     = viewMatrix * modelPosition;
+                        vec4 projectedPosition = projectionMatrix * viewPosition;
+
+                        gl_Position = projectedPosition;
+
+                        // Pulsing + individual size
+                        float pulse = 1.0 + sin(uTime * uPulseSpeed + position.x * 10.0) * uPulseAmount;
+                        gl_PointSize = aSize * 300.0 * pulse / -viewPosition.z;
+
+                        vColor = color;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vColor;
+
+                    void main() {
+                        // Circular point with soft edges
+                        float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
+                        float strength = 1.0 - step(0.5, distanceToCenter);
+                        strength += (1.0 - smoothstep(0.0, 0.5, distanceToCenter)) * 0.6;
+
+                        gl_FragColor = vec4(vColor, strength);
+                    }
+                `,
+                uniforms: {
+                    uTime:        { value: 0 },
+                    uPulseAmount: { value: parameters.pulseAmount },
+                    uPulseSpeed:  { value: parameters.pulseSpeed }
+                },
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true
+            });
+
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+        };
+
+        generateGalaxy();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        const tick = () => {
+            const elapsedTime = clock.getElapsedTime();
+
+            // Update uniforms
+            if (material) {
+                material.uniforms.uTime.value = elapsedTime;
+            }
+
+            // Slow rotation
+            if (points) {
+                points.rotation.y = elapsedTime * 0.05;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(tick);
+        };
+
+        tick();
+    </script>
+</body>
+</html>
