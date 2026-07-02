@@ -24,29 +24,24 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x000011);
 
         const canvas = document.querySelector('canvas.webgl');
 
-        // Camera
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.set(3, -2.5, 3);
 
-        // Renderer
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // Controls
         const controls = new OrbitControls(camera, canvas);
         controls.enableDamping = true;
-        controls.autoRotate = false;
 
-        // Parameters
+        // TỐI ƯU: Giảm xuống 200k hạt là đã quá đủ dày đặc và đẹp, cứu GPU khỏi overdraw
         const parameters = {
-            count: 500000,
+            count: 200000, 
             size: 0.009,
             radius: 6.24,
             branches: 15,
@@ -74,7 +69,7 @@
 
             const positions = new Float32Array(parameters.count * 3);
             const colors    = new Float32Array(parameters.count * 3);
-            const sizes     = new Float32Array(parameters.count); // individual particle variation
+            const sizes     = new Float32Array(parameters.count);
 
             const insideColor  = new THREE.Color(parameters.insideColor);
             const outsideColor = new THREE.Color(parameters.outsideColor);
@@ -84,39 +79,29 @@
 
                 const radius = Math.random() * parameters.radius;
                 const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2 +
-                                    radius * parameters.spin * 0.1; // Slight spiral
+                                    radius * parameters.spin * 0.1;
 
-                const randomX = Math.pow(Math.random(), parameters.randomnessPower) *
-                                (Math.random() < 0.5 ? 1 : -1) *
-                                parameters.randomness * radius;
-                const randomY = Math.pow(Math.random(), parameters.randomnessPower) *
-                                (Math.random() < 0.5 ? 1 : -1) *
-                                parameters.randomness * radius;
-                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) *
-                                (Math.random() < 0.5 ? 1 : -1) *
-                                parameters.randomness * radius;
+                const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
 
                 positions[i3]     = Math.cos(branchAngle) * radius + randomX;
                 positions[i3 + 1] = randomY;
                 positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
 
-                // Color gradient from inside to outside
-                const mixedColor = insideColor.clone();
-                mixedColor.lerp(outsideColor, radius / parameters.radius);
+                // TỐI ƯU: Tính toán lerp màu bằng công thức thuần túy, KHÔNG dùng .clone()
+                const ratio = radius / parameters.radius;
+                colors[i3]     = insideColor.r + (outsideColor.r - insideColor.r) * ratio;
+                colors[i3 + 1] = insideColor.g + (outsideColor.g - insideColor.g) * ratio;
+                colors[i3 + 2] = insideColor.b + (outsideColor.b - insideColor.b) * ratio;
 
-                colors[i3]     = mixedColor.r;
-                colors[i3 + 1] = mixedColor.g;
-                colors[i3 + 2] = mixedColor.b;
-
-                // Slight variation in base size for sparkle
                 sizes[i] = parameters.size * (0.8 + Math.random() * 0.4);
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
-            geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1)); // Custom size per particle
+            geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
 
-            // Shader material for pulsing and individual sizes
             material = new THREE.ShaderMaterial({
                 vertexShader: `
                     attribute float aSize;
@@ -132,7 +117,6 @@
 
                         gl_Position = projectedPosition;
 
-                        // Pulsing + individual size
                         float pulse = 1.0 + sin(uTime * uPulseSpeed + position.x * 10.0) * uPulseAmount;
                         gl_PointSize = aSize * 300.0 * pulse / -viewPosition.z;
 
@@ -143,7 +127,6 @@
                     varying vec3 vColor;
 
                     void main() {
-                        // Circular point with soft edges
                         float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
                         float strength = 1.0 - step(0.5, distanceToCenter);
                         strength += (1.0 - smoothstep(0.0, 0.5, distanceToCenter)) * 0.6;
@@ -168,7 +151,6 @@
 
         generateGalaxy();
 
-        // Handle resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -176,18 +158,15 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
 
-        // Animation loop
         const clock = new THREE.Clock();
 
         const tick = () => {
             const elapsedTime = clock.getElapsedTime();
 
-            // Update uniforms
             if (material) {
                 material.uniforms.uTime.value = elapsedTime;
             }
 
-            // Slow rotation
             if (points) {
                 points.rotation.y = elapsedTime * 0.05;
             }
