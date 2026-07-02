@@ -3,12 +3,16 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { margin: 0; overflow: hidden; background: #000011; }
+        body { margin: 0; overflow: hidden; background: #000005; } /* Chỉnh nền đen sâu hơn giống vũ trụ */
         canvas { display: block; }
+        video { display: none; }
     </style>
 </head>
 <body>
     <canvas class="webgl"></canvas>
+
+    <video id="video1" src="video1.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video2" src="video2.mp4" loop crossorigin="anonymous" playsinline muted></video>
 
     <script type="importmap">
     {
@@ -24,12 +28,12 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000011);
+        scene.background = new THREE.Color(0x000005);
 
         const canvas = document.querySelector('canvas.webgl');
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(3, -2.5, 3);
+        camera.position.set(4, -3.5, 5);
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -38,52 +42,78 @@
         const controls = new OrbitControls(camera, canvas);
         controls.enableDamping = true;
 
-        // --- CÀI ĐẶT ÂM THANH ĐƯỜNG DẪN TỪ REPO ---
+        const galaxyGroup = new THREE.Group();
+        scene.add(galaxyGroup);
+
+        // --- CÀI ĐẶT ÂM THANH ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
 
         const sound = new THREE.Audio(listener);
         const audioLoader = new THREE.AudioLoader();
-        
-        // Vì file nằm cùng repo nên chỉ cần gọi tên file như thế này là chuẩn
         const musicUrl = 'my-song.mp3'; 
 
         audioLoader.load(musicUrl, function(buffer) {
             sound.setBuffer(buffer);
             sound.setLoop(true); 
             sound.setVolume(0.5); 
-        }, undefined, function(err) {
-            console.error('Không tải được file nhạc từ repo. Hãy check lại tên file viết hoa/thường nhé!', err);
         });
 
-        // Kích hoạt khi click/chạm màn hình
-        const startAudio = () => {
-            // Kiểm tra xem AudioContext có bị đưa vào trạng thái treo (suspended) bởi trình duyệt không
+        const vid1 = document.getElementById('video1');
+        const vid2 = document.getElementById('video2');
+
+        const startMedia = () => {
             if (listener.context.state === 'suspended') {
                 listener.context.resume();
             }
             if (sound && !sound.isPlaying && sound.buffer) {
                 sound.play();
-                window.removeEventListener('click', startAudio);
-                window.removeEventListener('touchstart', startAudio);
             }
-        };
-        window.addEventListener('click', startAudio);
-        window.addEventListener('touchstart', startAudio);
-        // ----------------------------------------
+            vid1.play().catch(e => console.log("Chờ tương tác để chạy video 1"));
+            vid2.play().catch(e => console.log("Chờ tương tác để chạy video 2"));
 
+            window.removeEventListener('click', startMedia);
+            window.removeEventListener('touchstart', startMedia);
+        };
+        window.addEventListener('click', startMedia);
+        window.addEventListener('touchstart', startMedia);
+
+        // --- TẠO CÁC TẤM BẢNG VIDEO ---
+        const createVideoPlane = (videoElement, position, size) => {
+            const texture = new THREE.VideoTexture(videoElement);
+            texture.colorSpace = THREE.SRGBColorSpace;
+
+            const geometry = new THREE.PlaneGeometry(size.w, size.h);
+            const material = new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.85 
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(position.x, position.y, position.z);
+            mesh.lookAt(0, 0, 0); 
+
+            galaxyGroup.add(mesh);
+        };
+
+        createVideoPlane(vid1, { x: -2, y: 1, z: 2 }, { w: 1.6, h: 0.9 });  
+        createVideoPlane(vid2, { x: 3, y: -0.5, z: -1 }, { w: 1.6, h: 0.9 }); 
+
+        // --- ĐỔI MÀU THỰC TẾ: VÀNG CAM ẤM (TÂM) -> XANH LAM TRẺ (RÌA) ---
         const parameters = {
-            count: 200000, 
-            size: 0.009,
+            count: 500000, 
+            size: 0.008,          // Giảm nhẹ kích thước hạt một chút nhìn cho mịn và sâu hơn
             radius: 6.24,
             branches: 15,
             spin: -5,
             randomness: 0.304,
             randomnessPower: 3.031,
-            insideColor: '#ff66cc', 
-            outsideColor: '#4b0082', 
-            pulseSpeed: 0.5,
-            pulseAmount: 0.6
+            insideColor: '#ffe5ad',  // Màu vàng cát / vàng ngà ấm áp của sao già ở tâm
+            outsideColor: '#1a85ff', // Màu xanh lam rực rỡ của các ngôi sao trẻ ở rìa nhánh
+            pulseSpeed: 0.3,         // Giảm tốc độ lấp lánh một chút cho tự nhiên
+            pulseAmount: 0.4
         };
 
         let geometry = null;
@@ -91,12 +121,6 @@
         let points = null;
 
         const generateGalaxy = () => {
-            if (points !== null) {
-                geometry.dispose();
-                material.dispose();
-                scene.remove(points);
-            }
-
             geometry = new THREE.BufferGeometry();
 
             const positions = new Float32Array(parameters.count * 3);
@@ -177,7 +201,7 @@
             });
 
             points = new THREE.Points(geometry, material);
-            scene.add(points);
+            galaxyGroup.add(points);
         };
 
         generateGalaxy();
@@ -198,8 +222,8 @@
                 material.uniforms.uTime.value = elapsedTime;
             }
 
-            if (points) {
-                points.rotation.y = elapsedTime * 0.05;
+            if (galaxyGroup) {
+                galaxyGroup.rotation.y = -elapsedTime * 0.05;
             }
 
             controls.update();
