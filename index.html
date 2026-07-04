@@ -13,6 +13,8 @@
 
     <video id="video1" src="video1.mp4" loop crossorigin="anonymous" playsinline muted></video>
     <video id="video2" src="video2.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video3" src="video3.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video4" src="video4.mp4" loop crossorigin="anonymous" playsinline muted></video>
 
     <script type="importmap">
     {
@@ -33,7 +35,7 @@
         const canvas = document.querySelector('canvas.webgl');
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(4, -3.5, 5);
+        camera.position.set(0, 2.6, 5.2);
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,6 +63,9 @@
 
         const vid1 = document.getElementById('video1');
         const vid2 = document.getElementById('video2');
+        const vid3 = document.getElementById('video3');
+        const vid4 = document.getElementById('video4');
+        const allVideos = [vid1, vid2, vid3, vid4];
 
         const startMedia = () => {
             if (listener.context.state === 'suspended') {
@@ -69,8 +74,9 @@
             if (sound && !sound.isPlaying && sound.buffer) {
                 sound.play();
             }
-            vid1.play().catch(e => console.log("Chờ tương tác để chạy video 1"));
-            vid2.play().catch(e => console.log("Chờ tương tác để chạy video 2"));
+            allVideos.forEach((v, i) => {
+                v.play().catch(e => console.log(`Chờ tương tác để chạy video ${i + 1}`));
+            });
 
             window.removeEventListener('click', startMedia);
             window.removeEventListener('touchstart', startMedia);
@@ -98,10 +104,44 @@
             galaxyGroup.add(mesh);
         };
 
-        createVideoPlane(vid1, { x: -2, y: 1, z: 2 }, { w: 1.6, h: 0.9 });  
-        createVideoPlane(vid2, { x: 3, y: -0.5, z: -1 }, { w: 1.6, h: 0.9 }); 
+        // --- TẠO CÁC TẤM BẢNG ẢNH ---
+        const textureLoader = new THREE.TextureLoader();
 
-        // --- ĐỔI MÀU THỰC TẾ: VÀNG CAM ẤM (TÂM) -> XANH LAM TRẺ (RÌA) ---
+        const createImagePlane = (imageUrl, position, size) => {
+            const texture = textureLoader.load(imageUrl);
+            texture.colorSpace = THREE.SRGBColorSpace;
+
+            const geometry = new THREE.PlaneGeometry(size.w, size.h);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(position.x, position.y, position.z);
+            mesh.lookAt(0, 0, 0);
+
+            galaxyGroup.add(mesh);
+        };
+
+        // Kích thước đã được thu nhỏ lại một chút so với bản gốc (1.6 x 0.9)
+        const videoSize = { w: 1.1, h: 0.62 };
+        const imageSize = { w: 1.0, h: 0.75 };
+
+        createVideoPlane(vid1, { x: -2,   y: 1,    z: 2 },   videoSize);
+        createVideoPlane(vid2, { x: 3,    y: -0.5, z: -1 },  videoSize);
+        createVideoPlane(vid3, { x: -3.5, y: -1.5, z: -2.5 }, videoSize);
+        createVideoPlane(vid4, { x: 2.5,  y: 2,    z: -3 },  videoSize);
+
+        createImagePlane('image1.jpg', { x: 1.5,  y: -2,   z: 3 },    imageSize);
+        createImagePlane('image2.jpg', { x: -1.5, y: 2.5,  z: -1.5 }, imageSize);
+        createImagePlane('image3.jpg', { x: 4,    y: 0.5,  z: 1.5 },  imageSize);
+        createImagePlane('image4.jpg', { x: -4,   y: 1,    z: 1 },    imageSize);
+        createImagePlane('image5.jpg', { x: 0.5,  y: -3,   z: -2 },   imageSize);
+
+        // --- ĐỔI MÀU THỰC TẾ: VÀNG CAM ẤM (TÂM) -> HỒNG TÍM (GIỮA) -> XANH LAM TRẺ (RÌA) ---
         const parameters = {
             count: 500000, 
             size: 0.008,          // Giảm nhẹ kích thước hạt một chút nhìn cho mịn và sâu hơn
@@ -111,6 +151,7 @@
             randomness: 0.304,
             randomnessPower: 3.031,
             insideColor: '#ffe5ad',  // Màu vàng cát / vàng ngà ấm áp của sao già ở tâm
+            midColor: '#d178d1',     // Dải hồng - tím ở giữa, giống vùng bụi/khí ion hóa
             outsideColor: '#1a85ff', // Màu xanh lam rực rỡ của các ngôi sao trẻ ở rìa nhánh
             pulseSpeed: 0.3,         // Giảm tốc độ lấp lánh một chút cho tự nhiên
             pulseAmount: 0.4
@@ -128,6 +169,7 @@
             const sizes     = new Float32Array(parameters.count);
 
             const insideColor  = new THREE.Color(parameters.insideColor);
+            const midColor     = new THREE.Color(parameters.midColor);
             const outsideColor = new THREE.Color(parameters.outsideColor);
 
             for (let i = 0; i < parameters.count; i++) {
@@ -146,9 +188,15 @@
                 positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
 
                 const ratio = radius / parameters.radius;
-                colors[i3]     = insideColor.r + (outsideColor.r - insideColor.r) * ratio;
-                colors[i3 + 1] = insideColor.g + (outsideColor.g - insideColor.g) * ratio;
-                colors[i3 + 2] = insideColor.b + (outsideColor.b - insideColor.b) * ratio;
+                const mixedColor = new THREE.Color();
+                if (ratio < 0.5) {
+                    mixedColor.copy(insideColor).lerp(midColor, ratio * 2);
+                } else {
+                    mixedColor.copy(midColor).lerp(outsideColor, (ratio - 0.5) * 2);
+                }
+                colors[i3]     = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
 
                 sizes[i] = parameters.size * (0.8 + Math.random() * 0.4);
             }
@@ -206,6 +254,143 @@
 
         generateGalaxy();
 
+        // --- HỐ ĐEN SIÊU KHỐI Ở TÂM THIÊN HÀ ---
+        const createBlackHole = () => {
+            // Chân trời sự kiện: một khối cầu đen tuyệt đối, không phản xạ ánh sáng
+            const horizonGeometry = new THREE.SphereGeometry(0.18, 32, 32);
+            const horizonMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
+            galaxyGroup.add(horizon);
+
+            // Vòng bồi tụ (accretion disk) phát sáng vàng - hồng - tím quanh hố đen
+            const diskGeometry = new THREE.RingGeometry(0.22, 0.55, 64);
+            const diskMaterial = new THREE.ShaderMaterial({
+                side: THREE.DoubleSide,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                uniforms: {
+                    uTime: { value: 0 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec2 vUv;
+                    uniform float uTime;
+
+                    void main() {
+                        float dist = distance(vUv, vec2(0.5));
+                        vec3 innerColor = vec3(1.0, 0.9, 0.7);   // vàng sáng gần hố đen
+                        vec3 outerColor = vec3(0.85, 0.4, 0.9);  // tím hồng ở rìa đĩa
+                        vec3 color = mix(innerColor, outerColor, smoothstep(0.0, 0.5, dist));
+
+                        float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
+                        float swirl = 0.5 + 0.5 * sin(angle * 6.0 + uTime * 1.5 - dist * 20.0);
+                        float alpha = smoothstep(0.5, 0.0, dist) * (0.6 + 0.4 * swirl);
+
+                        gl_FragColor = vec4(color, alpha);
+                    }
+                `
+            });
+            const disk = new THREE.Mesh(diskGeometry, diskMaterial);
+            disk.rotation.x = Math.PI / 2.2; // nghiêng nhẹ giống góc nhìn thiên hà
+            galaxyGroup.add(disk);
+
+            return { disk, diskMaterial };
+        };
+
+        const blackHole = createBlackHole();
+        const blackHoleDiskMaterial = blackHole.diskMaterial;
+
+        // --- NỀN SAO XA (BACKGROUND STARFIELD) ---
+        const createBackgroundStars = () => {
+            const starCount = 4000;
+            const starPositions = new Float32Array(starCount * 3);
+            const starColors = new Float32Array(starCount * 3);
+            const starSizes = new Float32Array(starCount);
+
+            // Vài sắc thái nhẹ: trắng, trắng ngà, trắng xanh nhạt
+            const starPalette = [
+                new THREE.Color('#ffffff'),
+                new THREE.Color('#fff6e8'),
+                new THREE.Color('#cfe3ff')
+            ];
+
+            for (let i = 0; i < starCount; i++) {
+                const i3 = i * 3;
+
+                // Rải ngẫu nhiên trong một khối cầu lớn bao quanh thiên hà
+                const radius = 15 + Math.random() * 35;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                starPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
+                starPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                starPositions[i3 + 2] = radius * Math.cos(phi);
+
+                const color = starPalette[Math.floor(Math.random() * starPalette.length)];
+                starColors[i3]     = color.r;
+                starColors[i3 + 1] = color.g;
+                starColors[i3 + 2] = color.b;
+
+                starSizes[i] = 0.04 + Math.random() * 0.09;
+            }
+
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+            starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
+
+            const starMaterial = new THREE.ShaderMaterial({
+                vertexShader: `
+                    attribute float aSize;
+                    uniform float uTime;
+                    varying vec3 vColor;
+
+                    void main() {
+                        vec4 modelPosition    = modelMatrix * vec4(position, 1.0);
+                        vec4 viewPosition     = viewMatrix * modelPosition;
+                        vec4 projectedPosition = projectionMatrix * viewPosition;
+
+                        gl_Position = projectedPosition;
+
+                        // Lấp lánh nhẹ, chậm rãi
+                        float twinkle = 0.6 + 0.4 * sin(uTime * 0.6 + position.x * 3.0 + position.y * 3.0);
+                        gl_PointSize = aSize * 220.0 * twinkle / -viewPosition.z;
+
+                        vColor = color;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vColor;
+
+                    void main() {
+                        float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
+                        float strength = 1.0 - smoothstep(0.0, 0.5, distanceToCenter);
+                        gl_FragColor = vec4(vColor, strength);
+                    }
+                `,
+                uniforms: {
+                    uTime: { value: 0 }
+                },
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                vertexColors: true
+            });
+
+            const backgroundStars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(backgroundStars); // thêm thẳng vào scene, không xoay theo galaxyGroup
+            return starMaterial;
+        };
+
+        const backgroundStarMaterial = createBackgroundStars();
+
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -220,6 +405,19 @@
 
             if (material) {
                 material.uniforms.uTime.value = elapsedTime;
+            }
+
+            if (backgroundStarMaterial) {
+                backgroundStarMaterial.uniforms.uTime.value = elapsedTime;
+            }
+
+            if (blackHoleDiskMaterial) {
+                blackHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
+            }
+
+            if (blackHole && blackHole.disk) {
+                // Vòng chân trời sự kiện tự quay quanh trục riêng, nhanh hơn nhiều so với các hạt sao bên ngoài
+                blackHole.disk.rotation.z = elapsedTime * 2.4;
             }
 
             if (galaxyGroup) {
