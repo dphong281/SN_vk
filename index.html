@@ -27,63 +27,14 @@
             transition: all 0.3s ease;
             box-sizing: border-box;
         }
-        #popup-container.active {
-            display: block;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        #popup-media-container {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #000;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #popup-media-container img {
-            max-width: 100%;
-            max-height: 350px;
-            object-fit: contain;
-            display: block;
-        }
-        /* Khóa hoàn toàn mọi thao tác bấm/chạm lên video trong popup */
-        #popup-media-container video {
-            max-width: 100%;
-            max-height: 350px;
-            object-fit: contain;
-            display: block;
-            pointer-events: none; 
-        }
-        #popup-text {
-            font-size: 16px;
-            color: #4a4a4a;
-            line-height: 1.6;
-            margin: 10px 0;
-            font-weight: 500;
-            white-space: pre-line;
-        }
-        #popup-close {
-            position: absolute;
-            top: 12px;
-            right: 15px;
-            font-size: 22px;
-            cursor: pointer;
-            color: #aaa;
-            font-weight: bold;
-            transition: color 0.2s;
-        }
-        #popup-close:hover {
-            color: #ff69b4;
-        }
-        #popup-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 998;
-        }
+        #popup-container.active { display: block; transform: translate(-50%, -50%) scale(1); }
+        #popup-media-container { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
+        #popup-media-container img, #popup-media-container video { max-width: 100%; max-height: 350px; object-fit: contain; display: block; }
+        #popup-media-container video { pointer-events: none; }
+        #popup-text { font-size: 16px; color: #4a4a4a; line-height: 1.6; margin: 10px 0; font-weight: 500; white-space: pre-line; }
+        #popup-close { position: absolute; top: 12px; right: 15px; font-size: 22px; cursor: pointer; color: #aaa; font-weight: bold; transition: color 0.2s; }
+        #popup-close:hover { color: #ff69b4; }
+        #popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); z-index: 998; }
         #popup-overlay.active { display: block; }
     </style>
 </head>
@@ -119,9 +70,8 @@
         scene.background = new THREE.Color(0x000005);
 
         const canvas = document.querySelector('canvas.webgl');
-
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 4.0, 6.0); 
+        camera.position.set(0, 4.5, 6.5); 
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -135,6 +85,7 @@
 
         const clickableObjects = [];
 
+        // --- DỮ LIỆU LỜI CHÚC ---
         const mediaData = {
             'video1': { text: "Đối với anh, em không chỉ là người anh yêu mà còn là cả thế giới, là tất cả những gì anh muốn gìn giữ." },
             'video2': { text: "Cảm ơn em vì đã xuất hiện, biến những ngày bình thường của anh trở nên rực rỡ và ngọt ngào như dải ngân hà này vậy ✨" },
@@ -147,126 +98,73 @@
             'image5.jpg': { text: "Gửi đến cô gái tuyệt vời nhất của anh: Chúc em luôn tỏa sáng, hạnh phúc và nhận được những điều ngọt ngào nhất!" }
         };
 
-        // --- CÀI ĐẶT ÂM THANH NỀN ---
+        // --- ÂM THANH NỀN ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
-
         const sound = new THREE.Audio(listener);
         const audioLoader = new THREE.AudioLoader();
-        const musicUrl = 'my-song.mp3'; 
-
-        audioLoader.load(musicUrl, function(buffer) {
+        audioLoader.load('my-song.mp3', function(buffer) {
             sound.setBuffer(buffer);
-            sound.setLoop(true); 
-            sound.setVolume(0.5); 
+            sound.setLoop(true);
+            sound.setVolume(0.5);
         });
 
-        const vid1 = document.getElementById('video1');
-        const vid2 = document.getElementById('video2');
-        const vid3 = document.getElementById('video3');
-        const vid4 = document.getElementById('video4');
-        const allVideos = [vid1, vid2, vid3, vid4];
-
+        const allVideos = [document.getElementById('video1'), document.getElementById('video2'), document.getElementById('video3'), document.getElementById('video4')];
         const startMedia = () => {
-            if (listener.context.state === 'suspended') {
-                listener.context.resume();
-            }
-            if (sound && !sound.isPlaying && sound.buffer) {
-                sound.play();
-            }
-            allVideos.forEach((v) => {
-                v.muted = true; // Đảm bảo tuyệt đối video gốc ở background không phát tiếng
-                v.play().catch(e => console.log("Chờ tương tác để chạy video"));
-            });
-
+            if (listener.context.state === 'suspended') listener.context.resume();
+            if (sound && !sound.isPlaying && sound.buffer) sound.play();
+            allVideos.forEach(v => { v.muted = true; v.play().catch(() => {}); });
             window.removeEventListener('click', startMedia);
-            window.removeEventListener('touchstart', startMedia);
         };
         window.addEventListener('click', startMedia);
-        window.addEventListener('touchstart', startMedia);
 
-        // --- TẠO CÁC TẤM BẢNG VIDEO ---
+        // --- TẠO ẢNH & VIDEO ---
         const createVideoPlane = (videoElement, position, targetHeight) => {
             const texture = new THREE.VideoTexture(videoElement);
             texture.colorSpace = THREE.SRGBColorSpace;
-            texture.matrixAutoUpdate = true; 
-
-            const initGeometry = () => {
-                const videoWidth = videoElement.videoWidth || 16;
-                const videoHeight = videoElement.videoHeight || 9;
-                const aspectRatio = videoWidth / videoHeight;
-                
-                const geometry = new THREE.PlaneGeometry(targetHeight * aspectRatio, targetHeight);
-                mesh.geometry.dispose();
-                mesh.geometry = geometry;
-            };
-
             const tempGeometry = new THREE.PlaneGeometry(targetHeight * 1.6, targetHeight);
-            const material = new THREE.MeshBasicMaterial({ 
-                map: texture, 
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.95,
-                depthWrite: false 
-            });
-
+            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthWrite: false });
             const mesh = new THREE.Mesh(tempGeometry, material);
             mesh.position.set(position.x, 0.05, position.z);
-            mesh.lookAt(0, 0.05, 0); 
-            mesh.renderOrder = 2; 
-
+            mesh.lookAt(0, 0.05, 0);
+            mesh.renderOrder = 2;
             mesh.userData = { id: videoElement.id, type: 'video', src: videoElement.src };
             clickableObjects.push(mesh);
-
-            if (videoElement.readyState >= 1) {
-                initGeometry();
-            } else {
-                videoElement.addEventListener('loadedmetadata', initGeometry);
-            }
-
             galaxyGroup.add(mesh);
+            
+            if (videoElement.readyState >= 1) {
+                mesh.geometry.dispose();
+                mesh.geometry = new THREE.PlaneGeometry(targetHeight * (videoElement.videoWidth/videoElement.videoHeight), targetHeight);
+            } else {
+                videoElement.addEventListener('loadedmetadata', () => {
+                    mesh.geometry.dispose();
+                    mesh.geometry = new THREE.PlaneGeometry(targetHeight * (videoElement.videoWidth/videoElement.videoHeight), targetHeight);
+                });
+            }
         };
 
-        // --- TẠO CÁC TẤM BẢNG ẢNH ---
         const textureLoader = new THREE.TextureLoader();
-
         const createImagePlane = (imageUrl, position, targetHeight) => {
             textureLoader.load(imageUrl, (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
-
-                const imgWidth = texture.image.width;
-                const imgHeight = texture.image.height;
-                const aspectRatio = imgWidth / imgHeight;
-
-                const geometry = new THREE.PlaneGeometry(targetHeight * aspectRatio, targetHeight);
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.95,
-                    depthWrite: false
-                });
-
+                const geometry = new THREE.PlaneGeometry(targetHeight * (texture.image.width/texture.image.height), targetHeight);
+                const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true, opacity: 0.95, depthWrite: false });
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.set(position.x, 0.05, position.z);
                 mesh.lookAt(0, 0.05, 0);
                 mesh.renderOrder = 2;
-
                 mesh.userData = { id: imageUrl, type: 'image', src: imageUrl };
                 clickableObjects.push(mesh);
-
                 galaxyGroup.add(mesh);
             });
         };
 
         const targetVideoHeight = 0.95; 
         const targetImageHeight = 1.05; 
-
-        createVideoPlane(vid1, { x: -2.2, z: 2 },    targetVideoHeight);
-        createVideoPlane(vid2, { x: 3,    z: -1 },   targetVideoHeight);
-        createVideoPlane(vid3, { x: -3.4, z: -2.5 }, targetVideoHeight);
-        createVideoPlane(vid4, { x: 2.2,  z: -3.2 }, targetVideoHeight);
-
+        createVideoPlane(allVideos[0], { x: -2.2, z: 2 },    targetVideoHeight);
+        createVideoPlane(allVideos[1], { x: 3,    z: -1 },   targetVideoHeight);
+        createVideoPlane(allVideos[2], { x: -3.4, z: -2.5 }, targetVideoHeight);
+        createVideoPlane(allVideos[3], { x: 2.2,  z: -3.2 }, targetVideoHeight);
         createImagePlane('image1.jpg', { x: 1.5,  z: 2.8 },  targetImageHeight);
         createImagePlane('image2.jpg', { x: -1.5, z: -1.6 }, targetImageHeight);
         createImagePlane('image3.jpg', { x: 4.0,  z: 1.5 },  targetImageHeight);
@@ -274,43 +172,21 @@
         createImagePlane('image5.jpg', { x: 0.5,  z: -2.2 }, targetImageHeight);
 
         // --- HỆ THỐNG HẠT NGÂN HÀ ---
-        const parameters = {
-            count: 400000, 
-            size: 0.008,          
-            radius: 6.24,
-            branches: 15,
-            spin: -5,
-            randomness: 0.304,
-            randomnessPower: 3.031,
-            insideColor: '#ffe5ad',  
-            midColor: '#d178d1',     
-            outsideColor: '#1a85ff', 
-            pulseSpeed: 0.3,         
-            pulseAmount: 0.4
-        };
-
-        let geometry = null;
-        let material = null;
-        let points = null;
-
+        const parameters = { count: 400000, size: 0.008, radius: 6.24, branches: 15, spin: -5, randomness: 0.304, randomnessPower: 3.031, insideColor: '#ffe5ad', midColor: '#d178d1', outsideColor: '#1a85ff' };
+        let galaxyMaterial;
         const generateGalaxy = () => {
-            geometry = new THREE.BufferGeometry();
-
+            const geometry = new THREE.BufferGeometry();
             const positions = new Float32Array(parameters.count * 3);
             const colors    = new Float32Array(parameters.count * 3);
             const sizes     = new Float32Array(parameters.count);
-
             const insideColor  = new THREE.Color(parameters.insideColor);
             const midColor     = new THREE.Color(parameters.midColor);
             const outsideColor = new THREE.Color(parameters.outsideColor);
 
             for (let i = 0; i < parameters.count; i++) {
                 const i3 = i * 3;
-
                 const radius = Math.random() * parameters.radius;
-                const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2 +
-                                    radius * parameters.spin * 0.1;
-
+                const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2 + radius * parameters.spin * 0.1;
                 const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
                 const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
                 const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
@@ -321,306 +197,305 @@
 
                 const ratio = radius / parameters.radius;
                 const mixedColor = new THREE.Color();
-                if (ratio < 0.5) {
-                    mixedColor.copy(insideColor).lerp(midColor, ratio * 2);
-                } else {
-                    mixedColor.copy(midColor).lerp(outsideColor, (ratio - 0.5) * 2);
-                }
+                if (ratio < 0.5) mixedColor.copy(insideColor).lerp(midColor, ratio * 2);
+                else mixedColor.copy(midColor).lerp(outsideColor, (ratio - 0.5) * 2);
                 colors[i3]     = mixedColor.r;
                 colors[i3 + 1] = mixedColor.g;
                 colors[i3 + 2] = mixedColor.b;
-
                 sizes[i] = parameters.size * (0.8 + Math.random() * 0.4);
             }
-
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
             geometry.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
 
-            material = new THREE.ShaderMaterial({
+            galaxyMaterial = new THREE.ShaderMaterial({
                 vertexShader: `
-                    attribute float aSize;
-                    uniform float uTime;
-                    uniform float uPulseAmount;
-                    uniform float uPulseSpeed;
-                    varying vec3 vColor;
-
+                    attribute float aSize; uniform float uTime; varying vec3 vColor;
                     void main() {
-                        vec4 modelPosition    = modelMatrix * vec4(position, 1.0);
-                        vec4 viewPosition     = viewMatrix * modelPosition;
-                        vec4 projectedPosition = projectionMatrix * viewPosition;
-
-                        gl_Position = projectedPosition;
-
-                        float pulse = 1.0 + sin(uTime * uPulseSpeed + position.x * 10.0) * uPulseAmount;
-                        gl_PointSize = aSize * 300.0 * pulse / -viewPosition.z;
-
-                        vColor = color;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vColor;
-
-                    void main() {
-                        float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
-                        float strength = 1.0 - step(0.5, distanceToCenter);
-                        strength += (1.0 - smoothstep(0.0, 0.5, distanceToCenter)) * 0.6;
-
-                        gl_FragColor = vec4(vColor, strength);
-                    }
-                `,
-                uniforms: {
-                    uTime:        { value: 0 },
-                    uPulseAmount: { value: parameters.pulseAmount },
-                    uPulseSpeed:  { value: parameters.pulseSpeed }
-                },
-                transparent: true,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-                vertexColors: true
-            });
-
-            points = new THREE.Points(geometry, material);
-            points.renderOrder = 0; 
-            galaxyGroup.add(points);
-        };
-
-        generateGalaxy();
-
-        // --- HỐ TRẮNG (WHITE HOLE) TOẢ ÁNH HỒNG TÍM ---
-        const createWhiteHole = () => {
-            const horizonGeometry = new THREE.SphereGeometry(0.18, 32, 32);
-            const horizonMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
-            galaxyGroup.add(horizon);
-
-            const diskGeometry = new THREE.RingGeometry(0.20, 0.65, 64);
-            const diskMaterial = new THREE.ShaderMaterial({
-                side: THREE.DoubleSide,
-                transparent: true,
-                blending: THREE.AdditiveBlending, 
-                depthWrite: false,
-                uniforms: {
-                    uTime: { value: 0 }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    varying vec2 vUv;
-                    uniform float uTime;
-
-                    void main() {
-                        float dist = distance(vUv, vec2(0.5));
-                        
-                        vec3 innerColor = vec3(1.0, 0.92, 0.95);  
-                        vec3 outerColor = vec3(1.0, 0.15, 0.65);  
-                        vec3 color = mix(innerColor, outerColor, smoothstep(0.05, 0.45, dist));
-
-                        float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
-                        float swirl = 0.5 + 0.5 * sin(angle * 6.0 - uTime * 2.5 - dist * 15.0);
-                        
-                        float alpha = smoothstep(0.5, 0.01, dist) * (0.7 + 0.3 * swirl);
-
-                        gl_FragColor = vec4(color, alpha);
-                    }
-                `
-            });
-            const disk = new THREE.Mesh(diskGeometry, diskMaterial);
-            disk.rotation.x = Math.PI / 2.2; 
-            disk.renderOrder = 1;
-            galaxyGroup.add(disk);
-
-            return { disk, diskMaterial };
-        };
-
-        const whiteHole = createWhiteHole();
-        const whiteHoleDiskMaterial = whiteHole.diskMaterial;
-
-        // --- NỀN SAO XA ---
-        const createBackgroundStars = () => {
-            const starCount = 3000;
-            const starPositions = new Float32Array(starCount * 3);
-            const starColors = new Float32Array(starCount * 3);
-            const starSizes = new Float32Array(starCount);
-
-            const starPalette = [
-                new THREE.Color('#ffffff'),
-                new THREE.Color('#fff6e8'),
-                new THREE.Color('#cfe3ff')
-            ];
-
-            for (let i = 0; i < starCount; i++) {
-                const i3 = i * 3;
-                const radius = 15 + Math.random() * 35;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos((Math.random() * 2) - 1);
-
-                starPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
-                starPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                starPositions[i3 + 2] = radius * Math.cos(phi);
-
-                const color = starPalette[Math.floor(Math.random() * starPalette.length)];
-                starColors[i3]     = color.r;
-                starColors[i3 + 1] = color.g;
-                starColors[i3 + 2] = color.b;
-
-                starSizes[i] = 0.04 + Math.random() * 0.09;
-            }
-
-            const starGeometry = new THREE.BufferGeometry();
-            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-            starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-            starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
-
-            const starMaterial = new THREE.ShaderMaterial({
-                vertexShader: `
-                    attribute float aSize;
-                    uniform float uTime;
-                    varying vec3 vColor;
-                    void main() {
-                        vec4 modelPosition    = modelMatrix * vec4(position, 1.0);
-                        vec4 viewPosition     = viewMatrix * modelPosition;
+                        vec4 viewPosition = viewMatrix * modelMatrix * vec4(position, 1.0);
                         gl_Position = projectionMatrix * viewPosition;
-                        float twinkle = 0.6 + 0.4 * sin(uTime * 0.6 + position.x * 3.0 + position.y * 3.0);
-                        gl_PointSize = aSize * 220.0 * twinkle / -viewPosition.z;
+                        float pulse = 1.0 + sin(uTime * 0.3 + position.x * 10.0) * 0.4;
+                        gl_PointSize = aSize * 300.0 * pulse / -viewPosition.z;
                         vColor = color;
                     }
                 `,
                 fragmentShader: `
                     varying vec3 vColor;
                     void main() {
-                        float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
-                        float strength = 1.0 - smoothstep(0.0, 0.5, distanceToCenter);
-                        gl_FragColor = vec4(vColor, strength);
+                        float dist = distance(gl_PointCoord, vec2(0.5));
+                        if(dist > 0.5) discard;
+                        gl_FragColor = vec4(vColor, 1.0 - smoothstep(0.0, 0.5, dist));
                     }
                 `,
                 uniforms: { uTime: { value: 0 } },
                 transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true
             });
+            const points = new THREE.Points(geometry, galaxyMaterial);
+            points.renderOrder = 0;
+            galaxyGroup.add(points);
+        };
+        generateGalaxy();
 
-            const backgroundStars = new THREE.Points(starGeometry, starMaterial);
-            scene.add(backgroundStars); 
-            return starMaterial;
+        // --- HỐ TRẮNG (WHITE HOLE) ---
+        let whiteHoleDiskMaterial;
+        const createWhiteHole = () => {
+            const horizon = new THREE.Mesh(new THREE.SphereGeometry(0.18, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            galaxyGroup.add(horizon);
+
+            // Đưa lõi hố trắng vào danh sách click được
+            horizon.userData = { type: 'whitehole' };
+            clickableObjects.push(horizon);
+
+            whiteHoleDiskMaterial = new THREE.ShaderMaterial({
+                side: THREE.DoubleSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+                uniforms: { uTime: { value: 0 } },
+                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+                fragmentShader: `
+                    varying vec2 vUv; uniform float uTime;
+                    void main() {
+                        float dist = distance(vUv, vec2(0.5));
+                        vec3 innerColor = vec3(1.0, 0.92, 0.95);  
+                        vec3 outerColor = vec3(1.0, 0.15, 0.65);  
+                        vec3 color = mix(innerColor, outerColor, smoothstep(0.05, 0.45, dist));
+                        float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
+                        float swirl = 0.5 + 0.5 * sin(angle * 6.0 - uTime * 2.5 - dist * 15.0);
+                        gl_FragColor = vec4(color, smoothstep(0.5, 0.01, dist) * (0.7 + 0.3 * swirl));
+                    }
+                `
+            });
+            const disk = new THREE.Mesh(new THREE.RingGeometry(0.20, 0.65, 64), whiteHoleDiskMaterial);
+            disk.rotation.x = Math.PI / 2.2;
+            disk.renderOrder = 1;
+            galaxyGroup.add(disk);
+            return disk;
+        };
+        const whiteHoleDisk = createWhiteHole();
+
+        // --- NỀN SAO XA ---
+        let backgroundStarMaterial;
+        const createBackgroundStars = () => {
+            const starCount = 3000;
+            const positions = new Float32Array(starCount * 3);
+            for (let i = 0; i < starCount; i++) {
+                const i3 = i * 3;
+                const radius = 15 + Math.random() * 35;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                positions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i3 + 2] = radius * Math.cos(phi);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            backgroundStarMaterial = new THREE.ShaderMaterial({
+                uniforms: { uTime: { value: 0 } },
+                vertexShader: `
+                    uniform float uTime; void main() {
+                        vec4 viewPosition = viewMatrix * modelMatrix * vec4(position, 1.0);
+                        gl_Position = projectionMatrix * viewPosition;
+                        float twinkle = 0.6 + 0.4 * sin(uTime * 0.6 + position.x * 3.0);
+                        gl_PointSize = 0.06 * 220.0 * twinkle / -viewPosition.z;
+                    }
+                `,
+                fragmentShader: `void main() { gl_FragColor = vec4(1.0, 0.95, 1.0, 1.0 - smoothstep(0.0, 0.5, distance(gl_PointCoord, vec2(0.5)))); }`,
+                transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+            });
+            scene.add(new THREE.Points(geometry, backgroundStarMaterial));
+        };
+        createBackgroundStars();
+
+        // --- KỊCH BẢN TÊN LỬA & HẠT CHỮ CHÚC MỪNG ---
+        let rocketMesh = null;
+        let textPoints = null;
+        let animationStage = 'idle'; // idle, rocket, textShow
+        let stageStartTime = 0;
+
+        // Ma trận điểm vẽ chữ "CMSN VO" tinh gọn rực rỡ
+        const textGrid = [
+            // C
+            [-5,2],[-6,2],[-7,1],[-7,0],[-7,-1],[-6,-2],[-5,-2],
+            // M
+            [-3,-2],[-3,-1],[-3,0],[-3,1],[-3,2],[-2,1],[-1,0],[0,1],[1,2],[1,1],[1,0],[1,-1],[1,-2],
+            // S
+            [3,2],[2,2],[2,1],[3,0],[4,-1],[4,-2],[3,-2],
+            // N
+            [6,-2],[6,-1],[6,0],[6,1],[6,2],[7,1],[8,0],[9,-1],[9,-2],[9,-1],[9,0],[9,1],[9,2],
+            // Dòng 2: VO (Cách xuống dưới y = -5)
+            [-2,-5],[-3,-5],[-4,-6],[-4,-7],[-4,-8],[-3,-9],[-2,-9],[-1,-8],[-1,-7],[-1,-6],[-2,-5], // V dạng tròn uốn
+            [2,-5],[1,-6],[1,-7],[1,-8],[2,-9],[3,-9],[4,-8],[4,-7],[4,-6],[3,-5],[2,-5] // O
+        ];
+
+        const triggerRocketAndText = () => {
+            if (animationStage !== 'idle') return;
+            animationStage = 'rocket';
+            stageStartTime = clock.getElapsedTime();
+
+            // 1. Tạo hình tên lửa đơn giản dải sáng hồng rực rỡ
+            const rocketGeo = new THREE.ConeGeometry(0.08, 0.3, 8);
+            const rocketMat = new THREE.MeshBasicMaterial({ color: 0xff69b4 });
+            rocketMesh = new THREE.Mesh(rocketGeo, rocketMat);
+            rocketMesh.rotation.z = -Math.PI / 4; // Hướng bay chéo
+            scene.add(rocketMesh);
+
+            // 2. Chuẩn bị hệ thống hạt chữ ẩn sẵn tại tâm hố trắng
+            const pCount = textGrid.length * 15; // Nhân hạt lên cho chữ dày dặn dầy màu sắc
+            const initPositions = new Float32Array(pCount * 3);
+            const targetPositions = new Float32Array(pCount * 3);
+            const colors = new Float32Array(pCount * 3);
+
+            let idx = 0;
+            textGrid.forEach(pt => {
+                for(let k=0; k<15; k++){
+                    const i3 = idx * 3;
+                    // Toàn bộ xuất phát từ lõi hố trắng (0,0,0)
+                    initPositions[i3] = 0; initPositions[i3+1] = 0; initPositions[i3+2] = 0;
+                    
+                    // Điểm đích phân rã hạt quanh chữ trên bầu trời xa (Z = -6)
+                    targetPositions[i3]   = pt[0] * 0.4 + (Math.random() - 0.5) * 0.1;
+                    targetPositions[i3+1] = pt[1] * 0.4 + (Math.random() - 0.5) * 0.1 + 2.5; // Đẩy chữ lên cao trên nền đen
+                    targetPositions[i3+2] = -5 + (Math.random() - 0.5) * 0.1;
+
+                    // Tone màu hồng - tím neon ngọt ngào phối cực đẹp
+                    const c = new THREE.Color(Math.random() > 0.5 ? '#ff69b4' : '#d178d1');
+                    colors[i3] = c.r; colors[i3+1] = c.g; colors[i3+2] = c.b;
+                    idx++;
+                }
+            });
+
+            const textGeo = new THREE.BufferGeometry();
+            textGeo.setAttribute('position', new THREE.BufferAttribute(initPositions, 3));
+            textGeo.setAttribute('aTarget', new THREE.BufferAttribute(targetPositions, 3));
+            textGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const textMat = new THREE.ShaderMaterial({
+                uniforms: { uProgress: { value: 0 } },
+                vertexShader: `
+                    attribute vec3 aTarget; uniform float uProgress; varying vec3 vColor;
+                    void main() {
+                        // Di chuyển mượt từ tâm ra vị trí xếp chữ theo tiến trình uProgress
+                        vec3 mixedPos = mix(position, aTarget, uProgress);
+                        vec4 viewPosition = viewMatrix * vec4(mixedPos, 1.0);
+                        gl_Position = projectionMatrix * viewPosition;
+                        gl_PointSize = 12.0 / -viewPosition.z;
+                        vColor = color;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vColor; void main() {
+                        if(distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
+                        gl_FragColor = vec4(vColor, 1.0);
+                    }
+                `,
+                transparent: true, blending: THREE.AdditiveBlending, vertexColors: true
+            });
+
+            textPoints = new THREE.Points(textGeo, textMat);
+            scene.add(textPoints);
         };
 
-        const backgroundStarMaterial = createBackgroundStars();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        });
-
-        // --- HỆ THỐNG RAYCASTER (CLICK + HOVER ĐỔI CON TRỎ) ---
+        // --- RAYCASTER XỬ LÝ CLICK + HOVER ---
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-
         const popupOverlay = document.getElementById('popup-overlay');
         const popupContainer = document.getElementById('popup-container');
         const popupMediaContainer = document.getElementById('popup-media-container');
         const popupText = document.getElementById('popup-text');
-        const popupClose = document.getElementById('popup-close');
 
-        // Hàm cập nhật tọa độ chuột chuẩn WebGL
-        const updateMouseCoords = (clientX, clientY) => {
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-        };
-
-        // 1. Xử lý đổi con trỏ chuột khi di chuyển vào ảnh/video (Hover hiệu ứng)
-        window.addEventListener('mousemove', (event) => {
-            updateMouseCoords(event.clientX, event.clientY);
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(clickableObjects);
-
-            // Nếu chạm trúng ảnh/video thì đổi thành cursor pointer (bàn tay), ngược lại về mặc định
-            if (intersects.length > 0) {
-                document.body.style.cursor = 'pointer';
-            } else {
-                document.body.style.cursor = 'default';
-            }
+            document.body.style.cursor = raycaster.intersectObjects(clickableObjects).length > 0 ? 'pointer' : 'default';
         });
 
-        // 2. Xử lý click/chạm hiện popup lời chúc
-        const onPointerDown = (event) => {
-            let clientX = event.clientX || (event.touches && event.touches[0].clientX);
-            let clientY = event.clientY || (event.touches && event.touches[0].clientY);
-            
-            if(clientX === undefined) return;
-
-            updateMouseCoords(clientX, clientY);
+        window.addEventListener('click', () => {
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(clickableObjects);
-
             if (intersects.length > 0) {
-                const targetMesh = intersects[0].object;
-                const data = targetMesh.userData;
+                const data = intersects[0].object.userData;
+                
+                // Nếu click trúng Hố Trắng
+                if(data.type === 'whitehole') {
+                    triggerRocketAndText();
+                    return;
+                }
+
+                // Nếu click trúng Ảnh/Video
                 const info = mediaData[data.id] || { text: "Chúc em luôn rực rỡ hạnh phúc!" };
-
                 popupMediaContainer.innerHTML = '';
-
                 if (data.type === 'image') {
-                    const img = document.createElement('img');
-                    img.src = data.src;
+                    const img = document.createElement('img'); img.src = data.src;
                     popupMediaContainer.appendChild(img);
                 } else if (data.type === 'video') {
-                    const video = document.createElement('video');
-                    video.src = data.src;
-                    video.loop = true;
-                    video.autoplay = true;
-                    video.muted = true; // Ép tắt tiếng tuyệt đối trong popup theo yêu cầu
+                    const video = document.createElement('video'); video.src = data.src;
+                    video.loop = true; video.autoplay = true; video.muted = true;
                     video.setAttribute('playsinline', '');
                     popupMediaContainer.appendChild(video);
                 }
-
                 popupText.innerText = info.text;
-
                 popupOverlay.classList.add('active');
                 popupContainer.classList.add('active');
                 controls.enabled = false; 
             }
-        };
-
-        window.addEventListener('click', onPointerDown);
+        });
 
         const closePopup = () => {
-            popupOverlay.classList.remove('active');
-            popupContainer.classList.remove('active');
-            popupMediaContainer.innerHTML = ''; 
-            controls.enabled = true; 
+            popupOverlay.classList.remove('active'); popupContainer.classList.remove('active');
+            popupMediaContainer.innerHTML = ''; controls.enabled = true; 
         };
-        popupClose.addEventListener('click', closePopup);
+        document.getElementById('popup-close').addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', closePopup);
 
-        // --- VÒNG LẶP RENDER HOẠT ẢNH ANMATION ---
-        const clock = new THREE.Clock();
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
+        // --- VÒNG LẶP RENDER HOẠT ẢNH ---
+        const clock = new THREE.Clock();
         const tick = () => {
             const elapsedTime = clock.getElapsedTime();
 
-            if (material) material.uniforms.uTime.value = elapsedTime;
+            if (galaxyMaterial) galaxyMaterial.uniforms.uTime.value = elapsedTime;
             if (backgroundStarMaterial) backgroundStarMaterial.uniforms.uTime.value = elapsedTime;
             if (whiteHoleDiskMaterial) whiteHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
+            if (whiteHoleDisk) whiteHoleDisk.rotation.z = -elapsedTime * 3.5;
+            if (galaxyGroup) galaxyGroup.rotation.y = -elapsedTime * 0.05;
 
-            if (whiteHole && whiteHole.disk) {
-                whiteHole.disk.rotation.z = -elapsedTime * 3.5;
-            }
+            // Xử lý Timeline Kịch bản Tên lửa & Chữ hạt
+            if (animationStage === 'rocket') {
+                const timeInStage = elapsedTime - stageStartTime;
+                const duration = 1.2; // Tên lửa bay qua trong 1.2s
+                const t = timeInStage / duration;
 
-            if (galaxyGroup) {
-                galaxyGroup.rotation.y = -elapsedTime * 0.05;
+                if (t <= 1) {
+                    // Quỹ đạo tên lửa bay vút chéo qua nền trời từ góc trái dưới lên góc phải trên
+                    rocketMesh.position.x = -6 + t * 12;
+                    rocketMesh.position.y = -2 + t * 7;
+                    rocketMesh.position.z = -4;
+                } else {
+                    // Hết thời gian bay, ẩn tên lửa đi và chuyển sang giai đoạn bắn chữ
+                    scene.remove(rocketMesh);
+                    rocketMesh = null;
+                    animationStage = 'textShow';
+                    stageStartTime = elapsedTime;
+                }
+            } else if (animationStage === 'textShow') {
+                const timeInStage = elapsedTime - stageStartTime;
+                const duration = 2.0; // Chữ hạt bung ra và xếp hàng trong 2 giây
+                let progress = timeInStage / duration;
+                if(progress > 1) progress = 1;
+
+                if (textPoints) {
+                    // Cập nhật thuộc tính Progress vào Shader để hạt di chuyển dần thành chữ
+                    textPoints.material.uniforms.uProgress.value = progress;
+                }
             }
 
             controls.update();
             renderer.render(scene, camera);
             requestAnimationFrame(tick);
         };
-
         tick();
     </script>
 </body>
