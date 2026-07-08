@@ -2,19 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { margin: 0; overflow: hidden; background: #000005; }
+        body { margin: 0; overflow: hidden; background: #000005; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         canvas { display: block; }
-        video { display: none; }
+        video.hidden-video { display: none; }
+
+        /* --- STYLE CHO POPUP LỜI CHÚC --- */
+        #popup-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(255, 105, 180, 0.6); /* Viền sáng hồng neon */
+            border-radius: 20px;
+            border: 2px solid rgba(255, 182, 193, 0.8);
+            text-align: center;
+            z-index: 999;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        #popup-container.active {
+            display: block;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        #popup-media-container {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #popup-media-container img, #popup-media-container video {
+            max-width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            display: block;
+        }
+        #popup-text {
+            font-size: 16px;
+            color: #4a4a4a;
+            line-height: 1.6;
+            margin: 10px 0;
+            font-weight: 500;
+            white-space: pre-line;
+        }
+        #popup-close {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #aaa;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+        #popup-close:hover {
+            color: #ff69b4;
+        }
+        /* Nền mờ phía sau popup */
+        #popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 998;
+        }
+        #popup-overlay.active { display: block; }
     </style>
 </head>
 <body>
     <canvas class="webgl"></canvas>
 
-    <video id="video1" src="video1.mp4" loop crossorigin="anonymous" playsinline muted></video>
-    <video id="video2" src="video2.mp4" loop crossorigin="anonymous" playsinline muted></video>
-    <video id="video3" src="video3.mp4" loop crossorigin="anonymous" playsinline muted></video>
-    <video id="video4" src="video4.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video1" class="hidden-video" src="video1.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video2" class="hidden-video" src="video2.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video3" class="hidden-video" src="video3.mp4" loop crossorigin="anonymous" playsinline muted></video>
+    <video id="video4" class="hidden-video" src="video4.mp4" loop crossorigin="anonymous" playsinline muted></video>
+
+    <div id="popup-overlay"></div>
+    <div id="popup-container">
+        <span id="popup-close">&times;</span>
+        <div id="popup-media-container"></div>
+        <div id="popup-text"></div>
+    </div>
 
     <script type="importmap">
     {
@@ -35,7 +114,7 @@
         const canvas = document.querySelector('canvas.webgl');
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 3.5, 5.5); 
+        camera.position.set(0, 4.0, 6.0); 
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -46,6 +125,22 @@
 
         const galaxyGroup = new THREE.Group();
         scene.add(galaxyGroup);
+
+        // Mảng lưu trữ các vật thể có thể click (cho Raycaster)
+        const clickableObjects = [];
+
+        // --- KHO LỜI CHÚC CHO TỪNG FILE ---
+        const mediaData = {
+            'video1': { text: "Đối với anh, em không chỉ là người anh yêu mà còn là cả thế giới, là tất cả những gì anh muốn gìn giữ." },
+            'video2': { text: "Cảm ơn em vì đã xuất hiện, biến những ngày bình thường của anh trở nên rực rỡ và ngọt ngào như dải ngân hà này vậy ✨" },
+            'video3': { text: "Gặp được em là điều may mắn nhất đời anh. Mong rằng chúng ta của sau này sẽ luôn nắm tay nhau bình yên như thế nhé!" },
+            'video4': { text: "Nụ cười của em chính là thứ ánh sáng ấm áp nhất, có thể làm lu mờ cả hàng vạn vì sao tinh tú ngoài kia ❤️" },
+            'image1.jpg': { text: "Hạnh phúc lớn nhất của anh đơn giản chỉ là mỗi ngày được nhìn thấy em vui vẻ, bình an và luôn yêu đời." },
+            'image2.jpg': { text: "Dù vũ trụ này có rộng lớn đến đâu, tâm trí và trái tim anh cũng chỉ thu nhỏ lại vừa bằng một mình em thôi." },
+            'image3.jpg': { text: "Cảm ơn em vì đã luôn dịu dàng, luôn thấu hiểu và là chỗ dựa tinh thần bình yên nhất của anh lúc mỏi mệt." },
+            'image4.jpg': { text: "Mỗi khoảnh khắc được ở bên em đều là một thước phim đẹp nhất mà anh muốn lưu giữ suốt cả cuộc đời." },
+            'image5.jpg': { text: "Gửi đến cô gái tuyệt vời nhất của anh: Chúc em luôn tỏa sáng, hạnh phúc và nhận được những điều ngọt ngào nhất!" }
+        };
 
         // --- CÀI ĐẶT ÂM THANH ---
         const listener = new THREE.AudioListener();
@@ -74,8 +169,8 @@
             if (sound && !sound.isPlaying && sound.buffer) {
                 sound.play();
             }
-            allVideos.forEach((v, i) => {
-                v.play().catch(e => console.log(`Chờ tương tác để chạy video ${i + 1}`));
+            allVideos.forEach((v) => {
+                v.play().catch(e => console.log("Chờ tương tác để chạy video"));
             });
 
             window.removeEventListener('click', startMedia);
@@ -84,7 +179,7 @@
         window.addEventListener('click', startMedia);
         window.addEventListener('touchstart', startMedia);
 
-        // --- TẠO CÁC TẤM BẢNG VIDEO (ĐƯA VỀ Y = 0 + FIX XUYÊN HẠT) ---
+        // --- TẠO CÁC TẤM BẢNG VIDEO (TỌA ĐỘ Y HỢP LÝ + TO HƠN) ---
         const createVideoPlane = (videoElement, position, targetHeight) => {
             const texture = new THREE.VideoTexture(videoElement);
             texture.colorSpace = THREE.SRGBColorSpace;
@@ -106,17 +201,19 @@
                 side: THREE.DoubleSide,
                 transparent: true,
                 opacity: 0.95,
-                depthWrite: false // Ngăn việc ghi đè độ sâu để hiển thị mượt hơn ở rìa hạt
+                depthWrite: false 
             });
 
             const mesh = new THREE.Mesh(tempGeometry, material);
             
-            // Đặt Y = 0 để nằm đúng trên trục gốc của đĩa ngân hà
-            mesh.position.set(position.x, 0, position.z);
-            mesh.lookAt(0, 0, 0); 
+            // Y = 0.05: Nâng nhẹ lên trên mặt phẳng gốc một chút để ảnh không bị hạt đâm lởm chởm
+            mesh.position.set(position.x, 0.05, position.z);
+            mesh.lookAt(0, 0.05, 0); 
+            mesh.renderOrder = 2; 
 
-            // Tăng thứ tự render để ảnh/video đè lên trên các hạt sao, không bị hạt đâm xuyên qua mặt
-            mesh.renderOrder = 1; 
+            // Gắn thông tin nhận diện để khi click biết là file nào
+            mesh.userData = { id: videoElement.id, type: 'video', src: videoElement.src };
+            clickableObjects.push(mesh);
 
             if (videoElement.readyState >= 1) {
                 initGeometry();
@@ -127,7 +224,7 @@
             galaxyGroup.add(mesh);
         };
 
-        // --- TẠO CÁC TẤM BẢNG ẢNH (ĐƯA VỀ Y = 0 + FIX XUYÊN HẠT) ---
+        // --- TẠO CÁC TẤM BẢNG ẢNH (TỌA ĐỘ Y HỢP LÝ + TO HƠN) ---
         const textureLoader = new THREE.TextureLoader();
 
         const createImagePlane = (imageUrl, position, targetHeight) => {
@@ -149,32 +246,32 @@
 
                 const mesh = new THREE.Mesh(geometry, material);
                 
-                // Đặt Y = 0 để nằm đúng trên trục gốc của đĩa ngân hà
-                mesh.position.set(position.x, 0, position.z);
-                mesh.lookAt(0, 0, 0);
+                mesh.position.set(position.x, 0.05, position.z);
+                mesh.lookAt(0, 0.05, 0);
+                mesh.renderOrder = 2;
 
-                // Tăng thứ tự render để ảnh đè lên trên các hạt sao
-                mesh.renderOrder = 1;
+                mesh.userData = { id: imageUrl, type: 'image', src: imageUrl };
+                clickableObjects.push(mesh);
 
                 galaxyGroup.add(mesh);
             });
         };
 
-        // Kích thước nhỏ gọn tinh tế
-        const targetVideoHeight = 0.65; 
-        const targetImageHeight = 0.75; 
+        // Kích thước to hơn bản cũ một chút giúp dễ nhìn, dễ click trúng
+        const targetVideoHeight = 0.95; 
+        const targetImageHeight = 1.05; 
 
-        // Chỉ cần truyền tọa độ X và Z, tọa độ Y trong hàm đã ép cứng về 0
+        // Rải rác quanh đĩa X và Z
         createVideoPlane(vid1, { x: -2.2, z: 2 },    targetVideoHeight);
         createVideoPlane(vid2, { x: 3,    z: -1 },   targetVideoHeight);
-        createVideoPlane(vid3, { x: -3.2, z: -2.5 }, targetVideoHeight);
-        createVideoPlane(vid4, { x: 2.2,  z: -3 },   targetVideoHeight);
+        createVideoPlane(vid3, { x: -3.4, z: -2.5 }, targetVideoHeight);
+        createVideoPlane(vid4, { x: 2.2,  z: -3.2 }, targetVideoHeight);
 
-        createImagePlane('image1.jpg', { x: 1.5,  z: 3 },    targetImageHeight);
-        createImagePlane('image2.jpg', { x: -1.5, z: -1.5 }, targetImageHeight);
-        createImagePlane('image3.jpg', { x: 3.8,  z: 1.5 },  targetImageHeight);
-        createImagePlane('image4.jpg', { x: -3.8, z: 1 },    targetImageHeight);
-        createImagePlane('image5.jpg', { x: 0.5,  z: -2 },   targetImageHeight);
+        createImagePlane('image1.jpg', { x: 1.5,  z: 2.8 },  targetImageHeight);
+        createImagePlane('image2.jpg', { x: -1.5, z: -1.6 }, targetImageHeight);
+        createImagePlane('image3.jpg', { x: 4.0,  z: 1.5 },  targetImageHeight);
+        createImagePlane('image4.jpg', { x: -4.0, z: 0.8 },  targetImageHeight);
+        createImagePlane('image5.jpg', { x: 0.5,  z: -2.2 }, targetImageHeight);
 
         // --- HỆ THỐNG HẠT NGÂN HÀ ---
         const parameters = {
@@ -219,7 +316,7 @@
                 const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
 
                 positions[i3]     = Math.cos(branchAngle) * radius + randomX;
-                positions[i3 + 1] = randomY * 0.25; // Ép dẹt độ dày trục Y hơn nữa để dải ngân hà phẳng, giúp ảnh nổi bật tại Y=0
+                positions[i3 + 1] = randomY * 0.25; 
                 positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
 
                 const ratio = radius / parameters.radius;
@@ -284,27 +381,26 @@
             });
 
             points = new THREE.Points(geometry, material);
-            
-            // Đặt thứ tự render của hệ hạt thấp hơn ảnh/video
             points.renderOrder = 0; 
-            
             galaxyGroup.add(points);
         };
 
         generateGalaxy();
 
-        // --- HỐ ĐEN SIÊU KHỐI Ở TÂM THIÊN HÀ ---
-        const createBlackHole = () => {
+        // --- ĐỔI THÀNH HỐ TRẮNG (WHITE HOLE) TOẢ ÁNH HỒNG TÍM NEON ---
+        const createWhiteHole = () => {
+            // Lõi hố trắng phát sáng rực rỡ tuyệt đối (Màu trắng tinh)
             const horizonGeometry = new THREE.SphereGeometry(0.18, 32, 32);
-            const horizonMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const horizonMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
             const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
             galaxyGroup.add(horizon);
 
-            const diskGeometry = new THREE.RingGeometry(0.22, 0.55, 64);
+            // Vòng bồi tụ phát quang tỏa năng lượng ánh hồng tím rực rỡ từ tâm
+            const diskGeometry = new THREE.RingGeometry(0.20, 0.65, 64);
             const diskMaterial = new THREE.ShaderMaterial({
                 side: THREE.DoubleSide,
                 transparent: true,
-                blending: THREE.AdditiveBlending,
+                blending: THREE.AdditiveBlending, // Cộng hưởng ánh sáng phát quang rực rỡ
                 depthWrite: false,
                 uniforms: {
                     uTime: { value: 0 }
@@ -322,13 +418,17 @@
 
                     void main() {
                         float dist = distance(vUv, vec2(0.5));
-                        vec3 innerColor = vec3(1.0, 0.9, 0.7);   
-                        vec3 outerColor = vec3(0.85, 0.4, 0.9);  
-                        vec3 color = mix(innerColor, outerColor, smoothstep(0.0, 0.5, dist));
+                        
+                        // Hố trắng tỏa từ màu Trắng hồng sang Hồng tím Neon rực cháy ở rìa
+                        vec3 innerColor = vec3(1.0, 0.92, 0.95);  
+                        vec3 outerColor = vec3(1.0, 0.15, 0.65);  
+                        vec3 color = mix(innerColor, outerColor, smoothstep(0.05, 0.45, dist));
 
                         float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
-                        float swirl = 0.5 + 0.5 * sin(angle * 6.0 + uTime * 1.5 - dist * 20.0);
-                        float alpha = smoothstep(0.5, 0.0, dist) * (0.6 + 0.4 * swirl);
+                        float swirl = 0.5 + 0.5 * sin(angle * 6.0 - uTime * 2.5 - dist * 15.0);
+                        
+                        // Tạo hiệu ứng phát sáng mờ biên tỏa ra
+                        float alpha = smoothstep(0.5, 0.01, dist) * (0.7 + 0.3 * swirl);
 
                         gl_FragColor = vec4(color, alpha);
                     }
@@ -336,13 +436,14 @@
             });
             const disk = new THREE.Mesh(diskGeometry, diskMaterial);
             disk.rotation.x = Math.PI / 2.2; 
+            disk.renderOrder = 1;
             galaxyGroup.add(disk);
 
             return { disk, diskMaterial };
         };
 
-        const blackHole = createBlackHole();
-        const blackHoleDiskMaterial = blackHole.diskMaterial;
+        const whiteHole = createWhiteHole();
+        const whiteHoleDiskMaterial = whiteHole.diskMaterial;
 
         // --- NỀN SAO XA (BACKGROUND STARFIELD) ---
         const createBackgroundStars = () => {
@@ -359,7 +460,6 @@
 
             for (let i = 0; i < starCount; i++) {
                 const i3 = i * 3;
-
                 const radius = 15 + Math.random() * 35;
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.acos((Math.random() * 2) - 1);
@@ -386,36 +486,25 @@
                     attribute float aSize;
                     uniform float uTime;
                     varying vec3 vColor;
-
                     void main() {
                         vec4 modelPosition    = modelMatrix * vec4(position, 1.0);
                         vec4 viewPosition     = viewMatrix * modelPosition;
-                        vec4 projectedPosition = projectionMatrix * viewPosition;
-
-                        gl_Position = projectedPosition;
-
+                        gl_Position = projectionMatrix * viewPosition;
                         float twinkle = 0.6 + 0.4 * sin(uTime * 0.6 + position.x * 3.0 + position.y * 3.0);
                         gl_PointSize = aSize * 220.0 * twinkle / -viewPosition.z;
-
                         vColor = color;
                     }
                 `,
                 fragmentShader: `
                     varying vec3 vColor;
-
                     void main() {
                         float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
                         float strength = 1.0 - smoothstep(0.0, 0.5, distanceToCenter);
                         gl_FragColor = vec4(vColor, strength);
                     }
                 `,
-                uniforms: {
-                    uTime: { value: 0 }
-                },
-                transparent: true,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending,
-                vertexColors: true
+                uniforms: { uTime: { value: 0 } },
+                transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true
             });
 
             const backgroundStars = new THREE.Points(starGeometry, starMaterial);
@@ -432,25 +521,86 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
 
+        // --- XỬ LÝ CLICK/TAP BẮN TIA RAYCASTER ĐỂ HIỆN LỜI CHÚC ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const popupOverlay = document.getElementById('popup-overlay');
+        const popupContainer = document.getElementById('popup-container');
+        const popupMediaContainer = document.getElementById('popup-media-container');
+        const popupText = document.getElementById('popup-text');
+        const popupClose = document.getElementById('popup-close');
+
+        const onPointerDown = (event) => {
+            // Tính toán vị trí chuột/chạm theo hệ trục tọa độ chuẩn của WebGL (-1 đến +1)
+            let clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            let clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            
+            if(clientX === undefined) return;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableObjects);
+
+            if (intersects.length > 0) {
+                const targetMesh = intersects[0].object;
+                const data = targetMesh.userData;
+                const info = mediaData[data.id] || { text: "Chúc em một ngày luôn ngập tràn niềm vui và hạnh phúc!" };
+
+                // Xóa nội dung cũ trong khung popup
+                popupMediaContainer.innerHTML = '';
+
+                // Chèn ảnh hoặc video tương ứng vào popup dựa theo kiểu dữ liệu của bảng được click
+                if (data.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = data.src;
+                    popupMediaContainer.appendChild(img);
+                } else if (data.type === 'video') {
+                    const video = document.createElement('video');
+                    video.src = data.src;
+                    video.controls = true;
+                    video.autoplay = true;
+                    video.loop = true;
+                    popupMediaContainer.appendChild(video);
+                }
+
+                // Cập nhật lời chúc tương ứng
+                popupText.innerText = info.text;
+
+                // Kích hoạt hiển thị popup lãng mạn lên màn hình
+                popupOverlay.classList.add('active');
+                popupContainer.classList.add('active');
+                controls.enabled = false; // Tạm khóa xoay camera vũ trụ khi đang xem thiệp
+            }
+        };
+
+        window.addEventListener('click', onPointerDown);
+
+        // Đóng popup khi ấn nút X hoặc ấn ra ngoài khoảng mờ nền
+        const closePopup = () => {
+            popupOverlay.classList.remove('active');
+            popupContainer.classList.remove('active');
+            popupMediaContainer.innerHTML = ''; // Giải phóng bộ nhớ dừng chạy video popup
+            controls.enabled = true; // Mở lại xoay camera dải ngân hà tự do
+        };
+        popupClose.addEventListener('click', closePopup);
+        popupOverlay.addEventListener('click', closePopup);
+
+        // --- VÒNG LẶP RENDER HOẠT ẢNH ANMATION ---
         const clock = new THREE.Clock();
 
         const tick = () => {
             const elapsedTime = clock.getElapsedTime();
 
-            if (material) {
-                material.uniforms.uTime.value = elapsedTime;
-            }
+            if (material) material.uniforms.uTime.value = elapsedTime;
+            if (backgroundStarMaterial) backgroundStarMaterial.uniforms.uTime.value = elapsedTime;
+            if (whiteHoleDiskMaterial) whiteHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
 
-            if (backgroundStarMaterial) {
-                backgroundStarMaterial.uniforms.uTime.value = elapsedTime;
-            }
-
-            if (blackHoleDiskMaterial) {
-                blackHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
-            }
-
-            if (blackHole && blackHole.disk) {
-                blackHole.disk.rotation.z = elapsedTime * 2.4;
+            if (whiteHole && whiteHole.disk) {
+                // Vòng xoáy lõi hố trắng đảo chiều quay mạnh và nhanh, tạo luồng phun trào năng lượng
+                whiteHole.disk.rotation.z = -elapsedTime * 3.5;
             }
 
             if (galaxyGroup) {
