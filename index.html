@@ -35,7 +35,7 @@
         const canvas = document.querySelector('canvas.webgl');
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 2.6, 5.2);
+        camera.position.set(0, 4, 6); // Nâng camera cao lên một chút để nhìn từ trên xuống đẹp hơn
 
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -84,37 +84,38 @@
         window.addEventListener('click', startMedia);
         window.addEventListener('touchstart', startMedia);
 
-        // --- TẠO CÁC TẤM BẢNG VIDEO TỰ ĐỘNG TÍNH TỶ LỆ KHUNG HÌNH ---
+        // --- TẠO CÁC TẤM BẢNG VIDEO (FIX MÉO + ĐƯA LÊN TRÊN) ---
         const createVideoPlane = (videoElement, position, targetHeight) => {
             const texture = new THREE.VideoTexture(videoElement);
             texture.colorSpace = THREE.SRGBColorSpace;
+            
+            // Ép Three.js đọc đúng định hướng gốc của video (tránh lật ngang/méo do quay bằng điện thoại)
+            texture.matrixAutoUpdate = true; 
 
-            // Hàm khởi tạo geometry dựa trên kích thước thật của video
             const initGeometry = () => {
+                // Kiểm tra xem video dạng dọc hay ngang để lấy đúng tỷ lệ thực tế
                 const videoWidth = videoElement.videoWidth || 16;
                 const videoHeight = videoElement.videoHeight || 9;
                 const aspectRatio = videoWidth / videoHeight;
                 
-                // Giữ nguyên chiều cao targetHeight, tự tính chiều rộng theo tỷ lệ
                 const geometry = new THREE.PlaneGeometry(targetHeight * aspectRatio, targetHeight);
-                mesh.geometry.dispose(); // Bỏ geometry tạm thời ban đầu
+                mesh.geometry.dispose();
                 mesh.geometry = geometry;
             };
 
-            // Tạo một geometry tạm thời trước khi video kịp load xong metadata
             const tempGeometry = new THREE.PlaneGeometry(targetHeight * 1.6, targetHeight);
             const material = new THREE.MeshBasicMaterial({ 
                 map: texture, 
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.85 
+                opacity: 0.9 
             });
 
             const mesh = new THREE.Mesh(tempGeometry, material);
-            mesh.position.set(position.x, position.y, position.z);
-            mesh.lookAt(0, 0, 0); 
+            // Ép tọa độ Y hướng lên trên mặt ngân hà (Y > 0)
+            mesh.position.set(position.x, Math.abs(position.y) + 0.5, position.z);
+            mesh.lookAt(0, 0.5, 0); 
 
-            // Nếu video đã load sẵn metadata từ trước
             if (videoElement.readyState >= 1) {
                 initGeometry();
             } else {
@@ -124,53 +125,53 @@
             galaxyGroup.add(mesh);
         };
 
-        // --- TẠO CÁC TẤM BẢNG ẢNH TỰ ĐỘNG TÍNH TỶ LỆ KHUNG HÌNH ---
+        // --- TẠO CÁC TẤM BẢNG ẢNH (ĐƯA LÊN TRÊN) ---
         const textureLoader = new THREE.TextureLoader();
 
         const createImagePlane = (imageUrl, position, targetHeight) => {
             textureLoader.load(imageUrl, (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
 
-                // Lấy kích thước ảnh thật để tính tỷ lệ
                 const imgWidth = texture.image.width;
                 const imgHeight = texture.image.height;
                 const aspectRatio = imgWidth / imgHeight;
 
-                // Giữ nguyên chiều cao mong muốn, tự tính chiều rộng
                 const geometry = new THREE.PlaneGeometry(targetHeight * aspectRatio, targetHeight);
                 const material = new THREE.MeshBasicMaterial({
                     map: texture,
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.9
+                    opacity: 0.95
                 });
 
                 const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(position.x, position.y, position.z);
-                mesh.lookAt(0, 0, 0);
+                // Ép tọa độ Y hướng lên trên mặt ngân hà (Y > 0)
+                mesh.position.set(position.x, Math.abs(position.y) + 0.5, position.z);
+                mesh.lookAt(0, 0.5, 0);
 
                 galaxyGroup.add(mesh);
             });
         };
 
-        // Cố định chiều cao (nhỏ nhắn xinh xắn), chiều rộng sẽ tự co giãn theo tỷ lệ file gốc
-        const targetVideoHeight = 0.62; 
+        // Kích thước chuẩn chỉnh nhỏ gọn
+        const targetVideoHeight = 0.65; 
         const targetImageHeight = 0.75; 
 
-        createVideoPlane(vid1, { x: -2,    y: 1,    z: 2 },    targetVideoHeight);
-        createVideoPlane(vid2, { x: 3,     y: -0.5, z: -1 },  targetVideoHeight);
-        createVideoPlane(vid3, { x: -3.5, y: -1.5, z: -2.5 }, targetVideoHeight);
-        createVideoPlane(vid4, { x: 2.5,  y: 2,    z: -3 },   targetVideoHeight);
+        // Tọa độ X và Z giữ nguyên độ rải rác, nhưng Y đã được hàm xử lý tự động đưa lên mặt trên tầm 0.5 -> 2.5
+        createVideoPlane(vid1, { x: -2.5,  y: 0.8,  z: 2 },    targetVideoHeight);
+        createVideoPlane(vid2, { x: 3,     y: 0.5,  z: -1 },   targetVideoHeight);
+        createVideoPlane(vid3, { x: -3.2,  y: 0.6,  z: -2.5 }, targetVideoHeight);
+        createVideoPlane(vid4, { x: 2.2,   y: 1.2,  z: -3 },   targetVideoHeight);
 
-        createImagePlane('image1.jpg', { x: 1.5,  y: -2,   z: 3 },    targetImageHeight);
-        createImagePlane('image2.jpg', { x: -1.5, y: 2.5,  z: -1.5 }, targetImageHeight);
-        createImagePlane('image3.jpg', { x: 4,    y: 0.5,  z: 1.5 },  targetImageHeight);
-        createImagePlane('image4.jpg', { x: -4,   y: 1,    z: 1 },    targetImageHeight);
-        createImagePlane('image5.jpg', { x: 0.5,  y: -3,   z: -2 },   targetImageHeight);
+        createImagePlane('image1.jpg', { x: 1.5,  y: 0.5,  z: 3 },    targetImageHeight);
+        createImagePlane('image2.jpg', { x: -1.5, y: 1.5,  z: -1.5 }, targetImageHeight);
+        createImagePlane('image3.jpg', { x: 3.8,  y: 0.7,  z: 1.5 },  targetImageHeight);
+        createImagePlane('image4.jpg', { x: -3.8, y: 1.0,  z: 1 },    targetImageHeight);
+        createImagePlane('image5.jpg', { x: 0.5,  y: 0.6,  z: -2 },   targetImageHeight);
 
-        // --- ĐỔI MÀU THỰC TẾ: VÀNG CAM ẤM (TÂM) -> HỒNG TÍM (GIỮA) -> XANH LAM TRẺ (RÌA) ---
+        // --- HỆ THỐNG HẠT NGÂN HÀ ---
         const parameters = {
-            count: 500000, 
+            count: 400000, // Giảm nhẹ xuống 400k để mượt mà hơn trên mọi thiết bị
             size: 0.008,          
             radius: 6.24,
             branches: 15,
@@ -211,7 +212,7 @@
                 const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
 
                 positions[i3]     = Math.cos(branchAngle) * radius + randomX;
-                positions[i3 + 1] = randomY;
+                positions[i3 + 1] = randomY * 0.4; // Ép dẹt độ dày trục Y của ngân hà lại để dải ngân hà mỏng và phẳng hơn
                 positions[i3 + 2] = Math.sin(branchAngle) * radius + randomZ;
 
                 const ratio = radius / parameters.radius;
@@ -334,7 +335,7 @@
 
         // --- NỀN SAO XA (BACKGROUND STARFIELD) ---
         const createBackgroundStars = () => {
-            const starCount = 4000;
+            const starCount = 3000;
             const starPositions = new Float32Array(starCount * 3);
             const starColors = new Float32Array(starCount * 3);
             const starSizes = new Float32Array(starCount);
