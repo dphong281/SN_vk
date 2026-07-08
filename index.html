@@ -19,7 +19,7 @@
             max-width: 400px;
             background: rgba(255, 255, 255, 0.95);
             padding: 20px;
-            box-shadow: 0 0 30px rgba(255, 105, 180, 0.6); /* Viền sáng hồng neon */
+            box-shadow: 0 0 30px rgba(255, 105, 180, 0.6); 
             border-radius: 20px;
             border: 2px solid rgba(255, 182, 193, 0.8);
             text-align: center;
@@ -41,11 +41,19 @@
             justify-content: center;
             align-items: center;
         }
-        #popup-media-container img, #popup-media-container video {
+        #popup-media-container img {
             max-width: 100%;
             max-height: 350px;
             object-fit: contain;
             display: block;
+        }
+        /* Khóa hoàn toàn mọi thao tác bấm/chạm lên video trong popup */
+        #popup-media-container video {
+            max-width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            display: block;
+            pointer-events: none; 
         }
         #popup-text {
             font-size: 16px;
@@ -68,7 +76,6 @@
         #popup-close:hover {
             color: #ff69b4;
         }
-        /* Nền mờ phía sau popup */
         #popup-overlay {
             display: none;
             position: fixed;
@@ -126,10 +133,8 @@
         const galaxyGroup = new THREE.Group();
         scene.add(galaxyGroup);
 
-        // Mảng lưu trữ các vật thể có thể click (cho Raycaster)
         const clickableObjects = [];
 
-        // --- KHO LỜI CHÚC CHO TỪNG FILE ---
         const mediaData = {
             'video1': { text: "Đối với anh, em không chỉ là người anh yêu mà còn là cả thế giới, là tất cả những gì anh muốn gìn giữ." },
             'video2': { text: "Cảm ơn em vì đã xuất hiện, biến những ngày bình thường của anh trở nên rực rỡ và ngọt ngào như dải ngân hà này vậy ✨" },
@@ -142,7 +147,7 @@
             'image5.jpg': { text: "Gửi đến cô gái tuyệt vời nhất của anh: Chúc em luôn tỏa sáng, hạnh phúc và nhận được những điều ngọt ngào nhất!" }
         };
 
-        // --- CÀI ĐẶT ÂM THANH ---
+        // --- CÀI ĐẶT ÂM THANH NỀN ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
 
@@ -170,6 +175,7 @@
                 sound.play();
             }
             allVideos.forEach((v) => {
+                v.muted = true; // Đảm bảo tuyệt đối video gốc ở background không phát tiếng
                 v.play().catch(e => console.log("Chờ tương tác để chạy video"));
             });
 
@@ -179,7 +185,7 @@
         window.addEventListener('click', startMedia);
         window.addEventListener('touchstart', startMedia);
 
-        // --- TẠO CÁC TẤM BẢNG VIDEO (TỌA ĐỘ Y HỢP LÝ + TO HƠN) ---
+        // --- TẠO CÁC TẤM BẢNG VIDEO ---
         const createVideoPlane = (videoElement, position, targetHeight) => {
             const texture = new THREE.VideoTexture(videoElement);
             texture.colorSpace = THREE.SRGBColorSpace;
@@ -205,13 +211,10 @@
             });
 
             const mesh = new THREE.Mesh(tempGeometry, material);
-            
-            // Y = 0.05: Nâng nhẹ lên trên mặt phẳng gốc một chút để ảnh không bị hạt đâm lởm chởm
             mesh.position.set(position.x, 0.05, position.z);
             mesh.lookAt(0, 0.05, 0); 
             mesh.renderOrder = 2; 
 
-            // Gắn thông tin nhận diện để khi click biết là file nào
             mesh.userData = { id: videoElement.id, type: 'video', src: videoElement.src };
             clickableObjects.push(mesh);
 
@@ -224,7 +227,7 @@
             galaxyGroup.add(mesh);
         };
 
-        // --- TẠO CÁC TẤM BẢNG ẢNH (TỌA ĐỘ Y HỢP LÝ + TO HƠN) ---
+        // --- TẠO CÁC TẤM BẢNG ẢNH ---
         const textureLoader = new THREE.TextureLoader();
 
         const createImagePlane = (imageUrl, position, targetHeight) => {
@@ -245,7 +248,6 @@
                 });
 
                 const mesh = new THREE.Mesh(geometry, material);
-                
                 mesh.position.set(position.x, 0.05, position.z);
                 mesh.lookAt(0, 0.05, 0);
                 mesh.renderOrder = 2;
@@ -257,11 +259,9 @@
             });
         };
 
-        // Kích thước to hơn bản cũ một chút giúp dễ nhìn, dễ click trúng
         const targetVideoHeight = 0.95; 
         const targetImageHeight = 1.05; 
 
-        // Rải rác quanh đĩa X và Z
         createVideoPlane(vid1, { x: -2.2, z: 2 },    targetVideoHeight);
         createVideoPlane(vid2, { x: 3,    z: -1 },   targetVideoHeight);
         createVideoPlane(vid3, { x: -3.4, z: -2.5 }, targetVideoHeight);
@@ -387,20 +387,18 @@
 
         generateGalaxy();
 
-        // --- ĐỔI THÀNH HỐ TRẮNG (WHITE HOLE) TOẢ ÁNH HỒNG TÍM NEON ---
+        // --- HỐ TRẮNG (WHITE HOLE) TOẢ ÁNH HỒNG TÍM ---
         const createWhiteHole = () => {
-            // Lõi hố trắng phát sáng rực rỡ tuyệt đối (Màu trắng tinh)
             const horizonGeometry = new THREE.SphereGeometry(0.18, 32, 32);
             const horizonMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
             const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
             galaxyGroup.add(horizon);
 
-            // Vòng bồi tụ phát quang tỏa năng lượng ánh hồng tím rực rỡ từ tâm
             const diskGeometry = new THREE.RingGeometry(0.20, 0.65, 64);
             const diskMaterial = new THREE.ShaderMaterial({
                 side: THREE.DoubleSide,
                 transparent: true,
-                blending: THREE.AdditiveBlending, // Cộng hưởng ánh sáng phát quang rực rỡ
+                blending: THREE.AdditiveBlending, 
                 depthWrite: false,
                 uniforms: {
                     uTime: { value: 0 }
@@ -419,7 +417,6 @@
                     void main() {
                         float dist = distance(vUv, vec2(0.5));
                         
-                        // Hố trắng tỏa từ màu Trắng hồng sang Hồng tím Neon rực cháy ở rìa
                         vec3 innerColor = vec3(1.0, 0.92, 0.95);  
                         vec3 outerColor = vec3(1.0, 0.15, 0.65);  
                         vec3 color = mix(innerColor, outerColor, smoothstep(0.05, 0.45, dist));
@@ -427,7 +424,6 @@
                         float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
                         float swirl = 0.5 + 0.5 * sin(angle * 6.0 - uTime * 2.5 - dist * 15.0);
                         
-                        // Tạo hiệu ứng phát sáng mờ biên tỏa ra
                         float alpha = smoothstep(0.5, 0.01, dist) * (0.7 + 0.3 * swirl);
 
                         gl_FragColor = vec4(color, alpha);
@@ -445,7 +441,7 @@
         const whiteHole = createWhiteHole();
         const whiteHoleDiskMaterial = whiteHole.diskMaterial;
 
-        // --- NỀN SAO XA (BACKGROUND STARFIELD) ---
+        // --- NỀN SAO XA ---
         const createBackgroundStars = () => {
             const starCount = 3000;
             const starPositions = new Float32Array(starCount * 3);
@@ -521,7 +517,7 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
 
-        // --- XỬ LÝ CLICK/TAP BẮN TIA RAYCASTER ĐỂ HIỆN LỜI CHÚC ---
+        // --- HỆ THỐNG RAYCASTER (CLICK + HOVER ĐỔI CON TRỎ) ---
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -531,28 +527,44 @@
         const popupText = document.getElementById('popup-text');
         const popupClose = document.getElementById('popup-close');
 
+        // Hàm cập nhật tọa độ chuột chuẩn WebGL
+        const updateMouseCoords = (clientX, clientY) => {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+        };
+
+        // 1. Xử lý đổi con trỏ chuột khi di chuyển vào ảnh/video (Hover hiệu ứng)
+        window.addEventListener('mousemove', (event) => {
+            updateMouseCoords(event.clientX, event.clientY);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableObjects);
+
+            // Nếu chạm trúng ảnh/video thì đổi thành cursor pointer (bàn tay), ngược lại về mặc định
+            if (intersects.length > 0) {
+                document.body.style.cursor = 'pointer';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // 2. Xử lý click/chạm hiện popup lời chúc
         const onPointerDown = (event) => {
-            // Tính toán vị trí chuột/chạm theo hệ trục tọa độ chuẩn của WebGL (-1 đến +1)
             let clientX = event.clientX || (event.touches && event.touches[0].clientX);
             let clientY = event.clientY || (event.touches && event.touches[0].clientY);
             
             if(clientX === undefined) return;
 
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
+            updateMouseCoords(clientX, clientY);
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(clickableObjects);
 
             if (intersects.length > 0) {
                 const targetMesh = intersects[0].object;
                 const data = targetMesh.userData;
-                const info = mediaData[data.id] || { text: "Chúc em một ngày luôn ngập tràn niềm vui và hạnh phúc!" };
+                const info = mediaData[data.id] || { text: "Chúc em luôn rực rỡ hạnh phúc!" };
 
-                // Xóa nội dung cũ trong khung popup
                 popupMediaContainer.innerHTML = '';
 
-                // Chèn ảnh hoặc video tương ứng vào popup dựa theo kiểu dữ liệu của bảng được click
                 if (data.type === 'image') {
                     const img = document.createElement('img');
                     img.src = data.src;
@@ -560,30 +572,28 @@
                 } else if (data.type === 'video') {
                     const video = document.createElement('video');
                     video.src = data.src;
-                    video.controls = true;
-                    video.autoplay = true;
                     video.loop = true;
+                    video.autoplay = true;
+                    video.muted = true; // Ép tắt tiếng tuyệt đối trong popup theo yêu cầu
+                    video.setAttribute('playsinline', '');
                     popupMediaContainer.appendChild(video);
                 }
 
-                // Cập nhật lời chúc tương ứng
                 popupText.innerText = info.text;
 
-                // Kích hoạt hiển thị popup lãng mạn lên màn hình
                 popupOverlay.classList.add('active');
                 popupContainer.classList.add('active');
-                controls.enabled = false; // Tạm khóa xoay camera vũ trụ khi đang xem thiệp
+                controls.enabled = false; 
             }
         };
 
         window.addEventListener('click', onPointerDown);
 
-        // Đóng popup khi ấn nút X hoặc ấn ra ngoài khoảng mờ nền
         const closePopup = () => {
             popupOverlay.classList.remove('active');
             popupContainer.classList.remove('active');
-            popupMediaContainer.innerHTML = ''; // Giải phóng bộ nhớ dừng chạy video popup
-            controls.enabled = true; // Mở lại xoay camera dải ngân hà tự do
+            popupMediaContainer.innerHTML = ''; 
+            controls.enabled = true; 
         };
         popupClose.addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', closePopup);
@@ -599,7 +609,6 @@
             if (whiteHoleDiskMaterial) whiteHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
 
             if (whiteHole && whiteHole.disk) {
-                // Vòng xoáy lõi hố trắng đảo chiều quay mạnh và nhanh, tạo luồng phun trào năng lượng
                 whiteHole.disk.rotation.z = -elapsedTime * 3.5;
             }
 
