@@ -17,7 +17,7 @@
             width: 100%;
             height: 100%;
             background: radial-gradient(circle at center, #0a0a23 0%, #000005 100%);
-            z-index: 10000; /* Nằm trên cùng toàn bộ website */
+            z-index: 10000;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -153,7 +153,9 @@
             'image5.jpg': { text: "Gửi đến cô gái tuyệt vời nhất của anh: Chúc em luôn tỏa sáng, hạnh phúc và nhận được những điều ngọt ngào nhất!" }
         };
 
-        // --- ÂM THANH NỀN ---
+        // --- ÂM THANH NỀN (ĐÃ FIX CHỐNG HOÃN ĐỒNG BỘ) ---
+        let hasJoined = false; 
+
         const listener = new THREE.AudioListener();
         camera.add(listener);
         const sound = new THREE.Audio(listener);
@@ -163,6 +165,18 @@
             sound.setBuffer(buffer);
             sound.setLoop(true);
             sound.setVolume(0.5);
+            console.log("File nhạc đã tải xong mượt mà!");
+
+            // Nếu người dùng bấm nút trước khi nhạc load xong, tự cất tiếng ngay khi load xong
+            if (hasJoined && !sound.isPlaying) {
+                if (listener.context.state === 'suspended') {
+                    listener.context.resume().then(() => sound.play());
+                } else {
+                    sound.play();
+                }
+            }
+        }, undefined, function(err) {
+            console.error("Lỗi đường dẫn hoặc định dạng file nhạc:", err);
         });
 
         const allVideos = [
@@ -177,7 +191,9 @@
         const welcomeScreen = document.getElementById('welcome-screen');
 
         joinBtn.addEventListener('click', () => {
-            // 1. Kích hoạt âm thanh nền ngay lập tức nhờ tương tác hợp lệ
+            hasJoined = true; 
+
+            // Kích hoạt âm thanh nền (chỉ chạy mượt nếu nhạc đã load xong hoàn toàn)
             if (listener.context.state === 'suspended') {
                 listener.context.resume();
             }
@@ -185,7 +201,7 @@
                 sound.play();
             }
 
-            // 2. Kích hoạt toàn bộ các video ngầm tự phát
+            // Kích hoạt toàn bộ các video ngầm tự phát ổn định
             allVideos.forEach(v => {
                 if (v) {
                     v.muted = true;
@@ -193,7 +209,7 @@
                 }
             });
 
-            // 3. Ẩn màn hình chào với hiệu ứng biến mất dần mượt mà
+            // Ẩn màn hình chào 
             welcomeScreen.classList.add('fade-out');
         });
 
