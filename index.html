@@ -316,124 +316,6 @@
         };
         createBackgroundStars();
 
-        // --- KỊCH BẢN TÊN LỬA & MA TRẬN CHỮ ĐẦY ĐỦ SIÊU ĐẸP ---
-        let rocketMesh = null;
-        let textPoints = null;
-        let animationStage = 'idle'; 
-        let stageStartTime = 0;
-
-        const textGrid = [
-            // === DÒNG 1: CHÚC MỪNG (Tọa độ Y = 5) ===
-            // C
-            [-12,6],[-13,6],[-14,5],[-14,4],[-14,3],[-13,2],[-12,2],
-            // H
-            [-10,6],[-10,5],[-10,4],[-10,3],[-10,2],[-9,4],[-8,4],[-7,6],[-7,5],[-7,4],[-7,3],[-7,2],
-            // U
-            [-5,6],[-5,5],[-5,4],[-5,3],[-4,2],[-3,2],[-2,3],[-2,4],[-2,5],[-2,6],
-            // C + Dấu sắc
-            [0,6],[-1,6],[-2,5],[-2,4],[-2,3],[-1,2],[0,2], [0,8],[-1,7],
-            // Khoảng cách dấu cách sang chữ MỪNG
-            // M
-            [3,2],[3,3],[3,4],[3,5],[3,6],[4,5],[5,4],[6,5],[7,6],[7,5],[7,4],[7,3],[7,2],
-            // U + Dấu râu chữ Ư
-            [9,6],[9,5],[9,4],[9,3],[10,2],[11,2],[12,3],[12,4],[12,5],[12,6],[13,6],
-            // N
-            [14,2],[14,3],[14,4],[14,5],[14,6],[15,5],[16,4],[17,3],[17,2],[17,4],[17,5],[17,6],
-            // G + Dấu huyền
-            [20,6],[19,6],[18,5],[18,4],[18,3],[19,2],[20,2],[20,3],[20,4],[19,4], [18,8],[19,7],
-
-            // === DÒNG 2: SINH NHẬT (Tọa độ Y = 0) ===
-            // S
-            [-12,1],[-13,1],[-14,0],[-13,-1],[-12,-2],[-13,-3],[-14,-3],
-            // I
-            [-10,1],[-10,0],[-10,-1],[-10,-2],[-10,-3],
-            // N
-            [-8,-3],[-8,-2],[-8,-1],[-8,0],[-8,1],[-7,0],[-6,-1],[-5,-2],[-5,-3],[-5,-1],[-5,0],[-5,1],
-            // H
-            [-3,1],[-3,0],[-3,-1],[-3,-2],[-3,-3],[-2,-1],[-1,-1],[0,1],[0,0],[0,-1],[0,-2],[0,-3],
-            // Khoảng cách dấu cách sang chữ NHẬT
-            // N
-            [3,-3],[3,-2],[3,-1],[3,0],[3,1],[4,0],[5,-1],[6,-2],[6,-3],[6,-1],[6,0],[6,1],
-            // H
-            [8,1],[8,0],[8,-1],[8,-2],[8,-3],[9,-1],[10,-1],[11,1],[11,0],[11,-1],[11,-2],[11,-3],
-            // A + Dấu nặng + Dấu mũ Â
-            [13,-3],[13,-2],[13,-1],[13,0],[14,1],[15,1],[16,0],[16,-1],[16,-2],[16,-3],[14,-1],[15,-1], [14.5,-5], [14,2],[15,2],
-            // T
-            [18,1],[19,1],[20,1],[19,0],[19,-1],[19,-2],[19,-3],
-
-            // === DÒNG 3: VỢ ❤️ (Tọa độ Y = -5) ===
-            // V
-            [-5,-4],[-4,-5],[-3,-6],[-2,-7],[-1,-8],[0,-7],[1,-6],[2,-5],[3,-4],
-            // O + Dấu râu chữ Ơ + Dấu nặng
-            [5,-5],[4,-6],[4,-7],[5,-8],[6,-8],[7,-7],[7,-6],[6,-5],[5,-5], [7,-4], [5.5,-10],
-            // TRÁI TIM KIỂU HẠT (Bên cạnh chữ VỢ)
-            [10,-5],[11,-4],[12,-4],[13,-5],[14,-6],[13,-7],[12,-8],[11,-9],[10,-10],[9,-9],[8,-8],[7,-7],[6,-6],[7,-5],[8,-4],[9,-4]
-        ];
-
-        const triggerRocketAndText = () => {
-            if (animationStage !== 'idle') return;
-            animationStage = 'rocket';
-            stageStartTime = clock.getElapsedTime();
-
-            const rocketGeo = new THREE.ConeGeometry(0.08, 0.3, 8);
-            const rocketMat = new THREE.MeshBasicMaterial({ color: 0xff69b4 });
-            rocketMesh = new THREE.Mesh(rocketGeo, rocketMat);
-            rocketMesh.rotation.z = -Math.PI / 4; 
-            scene.add(rocketMesh);
-
-            const pCount = textGrid.length * 25; // Tăng lượng hạt mỗi nét chữ lên 25 để chữ dầy dặn không xước nét
-            const initPositions = new Float32Array(pCount * 3);
-            const targetPositions = new Float32Array(pCount * 3);
-            const colors = new Float32Array(pCount * 3);
-
-            let idx = 0;
-            textGrid.forEach(pt => {
-                for(let k=0; k<25; k++){
-                    const i3 = idx * 3;
-                    initPositions[i3] = 0; initPositions[i3+1] = 0; initPositions[i3+2] = 0;
-                    
-                    // Căn chỉnh khoảng cách chữ (Scale 0.28) để vừa vặn khung hình nền trời
-                    targetPositions[i3]   = pt[0] * 0.28 + (Math.random() - 0.5) * 0.08;
-                    targetPositions[i3+1] = pt[1] * 0.28 + (Math.random() - 0.5) * 0.08 + 2.8; 
-                    targetPositions[i3+2] = -4.5 + (Math.random() - 0.5) * 0.08;
-
-                    // Phối hạt màu Neon Hồng Sét và Tím cực kỳ rực rỡ
-                    const c = new THREE.Color(Math.random() > 0.4 ? '#ff1493' : '#e066ff');
-                    colors[i3] = c.r; colors[i3+1] = c.g; colors[i3+2] = c.b;
-                    idx++;
-                }
-            });
-
-            const textGeo = new THREE.BufferGeometry();
-            textGeo.setAttribute('position', new THREE.BufferAttribute(initPositions, 3));
-            textGeo.setAttribute('aTarget', new THREE.BufferAttribute(targetPositions, 3));
-            textGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-            const textMat = new THREE.ShaderMaterial({
-                uniforms: { uProgress: { value: 0 } },
-                vertexShader: `
-                    attribute vec3 aTarget; uniform float uProgress; varying vec3 vColor;
-                    void main() {
-                        vec3 mixedPos = mix(position, aTarget, uProgress);
-                        vec4 viewPosition = viewMatrix * vec4(mixedPos, 1.0);
-                        gl_Position = projectionMatrix * viewPosition;
-                        gl_PointSize = 14.0 / -viewPosition.z;
-                        vColor = color;
-                    }
-                `,
-                fragmentShader: `
-                    varying vec3 vColor; void main() {
-                        if(distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
-                        gl_FragColor = vec4(vColor, 1.0);
-                    }
-                `,
-                transparent: true, blending: THREE.AdditiveBlending, vertexColors: true
-            });
-
-            textPoints = new THREE.Points(textGeo, textMat);
-            scene.add(textPoints);
-        };
-
         // --- RAYCASTER XỬ LÝ CLICK + HOVER ---
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -455,8 +337,8 @@
             if (intersects.length > 0) {
                 const data = intersects[0].object.userData;
                 
+                // Nếu click trúng Hố trắng thì không làm gì cả (bỏ logic gọi rocket)
                 if(data.type === 'whitehole') {
-                    triggerRocketAndText();
                     return;
                 }
 
@@ -500,32 +382,6 @@
             if (whiteHoleDiskMaterial) whiteHoleDiskMaterial.uniforms.uTime.value = elapsedTime;
             if (whiteHoleDisk) whiteHoleDisk.rotation.z = -elapsedTime * 3.5;
             if (galaxyGroup) galaxyGroup.rotation.y = -elapsedTime * 0.05;
-
-            if (animationStage === 'rocket') {
-                const timeInStage = elapsedTime - stageStartTime;
-                const duration = 1.2; 
-                const t = timeInStage / duration;
-
-                if (t <= 1) {
-                    rocketMesh.position.x = -6 + t * 12;
-                    rocketMesh.position.y = -2 + t * 7;
-                    rocketMesh.position.z = -4;
-                } else {
-                    scene.remove(rocketMesh);
-                    rocketMesh = null;
-                    animationStage = 'textShow';
-                    stageStartTime = elapsedTime;
-                }
-            } else if (animationStage === 'textShow') {
-                const timeInStage = elapsedTime - stageStartTime;
-                const duration = 2.0; 
-                let progress = timeInStage / duration;
-                if(progress > 1) progress = 1;
-
-                if (textPoints) {
-                    textPoints.material.uniforms.uProgress.value = progress;
-                }
-            }
 
             controls.update();
             renderer.render(scene, camera);
